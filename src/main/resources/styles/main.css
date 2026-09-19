@@ -1,0 +1,76 @@
+/* ================================================================
+   main.css - Estilos base de SIGCAT
+   Responsable: Leider Barreto (UI/UX)
+   ================================================================ */
+
+/* ─── Variables de color ─────────────────────────────────────── */
+.root {
+    -fx-font-family: "Segoe UI", Arial, sans-serif;
+    -fx-background-color: #1a1a2e;
+}
+
+/* ─── Contenedor principal del login ────────────────────────── */
+.login-root {
+    -fx-background-color: #1a1a2e;
+}
+
+/* ─── Título principal ───────────────────────────────────────── */
+.login-title {
+    -fx-font-size: 42px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e94560;
+    -fx-effect: dropshadow(gaussian, #e94560, 12, 0.4, 0, 0);
+}
+
+/* ─── Subtítulo ──────────────────────────────────────────────── */
+.login-subtitle {
+    -fx-font-size: 14px;
+    -fx-text-fill: #a0a0c0;
+}
+
+/* ─── Etiqueta de campo ──────────────────────────────────────── */
+.field-label {
+    -fx-font-size: 12px;
+    -fx-text-fill: #a0a0c0;
+}
+
+/* ─── Campos de texto ────────────────────────────────────────── */
+.login-field {
+    -fx-background-color: #16213e;
+    -fx-text-fill: #ffffff;
+    -fx-prompt-text-fill: #555577;
+    -fx-border-color: #0f3460;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 10px 14px;
+    -fx-font-size: 14px;
+}
+
+.login-field:focused {
+    -fx-border-color: #e94560;
+    -fx-border-width: 1.5px;
+}
+
+/* ─── Botón primario ─────────────────────────────────────────── */
+.btn-primary {
+    -fx-background-color: #e94560;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px 24px;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #c73652;
+    -fx-effect: dropshadow(gaussian, #e94560, 8, 0.3, 0, 0);
+}
+
+/* ─── Etiqueta de error ──────────────────────────────────────── */
+.error-label {
+    -fx-text-fill: #e94560;
+    -fx-font-size: 12px;
+    -fx-font-style: italic;
+}

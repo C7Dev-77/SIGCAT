@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<!--
+    Vista de Login - SIGCAT
+    Responsable: Leider Barreto (UI/UX)
+    Controlador: com.sigcat.controllers.LoginController
+-->
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.sigcat.controllers.LoginController"
+      alignment="CENTER"
+      spacing="16"
+      prefWidth="800"
+      prefHeight="600"
+      styleClass="login-root">
+
+    <padding>
+        <Insets top="80" right="200" bottom="80" left="200"/>
+    </padding>
+
+    <!-- Título -->
+    <Label text="SIGCAT" styleClass="login-title"/>
+    <Label text="Sistema de Registro Catastral" styleClass="login-subtitle"/>
+
+    <!-- Campo: Documento -->
+    <Label text="Número de Documento" styleClass="field-label"/>
+    <TextField fx:id="txtDocumento"
+               promptText="Ingrese su número de documento"
+               styleClass="login-field"
+               maxWidth="360"/>
+
+    <!-- Campo: Contraseña -->
+    <Label text="Contraseña" styleClass="field-label"/>
+    <PasswordField fx:id="txtPassword"
+                   promptText="Ingrese su contraseña"
+                   styleClass="login-field"
+                   maxWidth="360"/>
+
+    <!-- Mensaje de error -->
+    <Label fx:id="lblError" styleClass="error-label" wrapText="true"/>
+
+    <!-- Botón Ingresar -->
+    <Button fx:id="btnIngresar"
+            text="Ingresar"
+            onAction="#onIngresar"
+            styleClass="btn-primary"
+            defaultButton="true"
+            maxWidth="360"/>
+
+</VBox>
