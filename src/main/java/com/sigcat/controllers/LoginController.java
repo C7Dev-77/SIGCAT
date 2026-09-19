@@ -61,6 +61,16 @@ public class LoginController {
      * TODO: Leider implementa la navegación a las vistas de cada rol.
      */
     private void redirigirSegunRol(Usuario usuario) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Inicio de Sesión Exitoso");
+        alert.setHeaderText("¡Bienvenido al sistema, " + usuario.getNombre() + "!");
+        alert.setContentText(
+            "Rol detectado: " + usuario.getRol() + "\nDocumento: " + usuario.getDocumento() +
+            "\n\n(Próximo paso de Leider: enlazar con " + 
+            (usuario.getRol() == Usuario.Rol.FUNCIONARIO ? "dashboard-funcionario.fxml" : "dashboard-propietario.fxml") + ")"
+        );
+        alert.showAndWait();
+
         if (usuario.getRol() == Usuario.Rol.FUNCIONARIO) {
             System.out.println("[LOGIN] Redirigiendo a panel Funcionario: " + usuario.getNombre());
             // TODO: cargar dashboard-funcionario.fxml

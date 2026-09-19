@@ -92,3 +92,33 @@ Una tarea se considera finalizada solo si:
 2. La funcionalidad no afecta secciones previamente operativas (no hay regresiones).
 3. El código ha sido integrado en la rama `main` del repositorio.
 4. No existen rutas de archivos o credenciales *hardcoded* (configuración portable).
+
+---
+
+## 🎨 7. Guía de Diseño y Tareas UI/UX (Responsable: Leider Barreto)
+
+En la carpeta `docs/diseno/` se encuentran las maquetas de alta fidelidad que sirven como guía visual para el desarrollo de la interfaz:
+
+| Maqueta | Archivo | Descripción |
+| :--- | :--- | :--- |
+| **Login** | `docs/diseno/1_login_ui.jpg` | Vista de autenticación con tarjeta centralizada y tema `#1a1a2e`. *(Completada ✅)* |
+| **Dashboard Propietario** | `docs/diseno/2_dashboard_propietario.jpg` | Panel para ingresar coordenadas $(X, Y)$, lista de vértices ($P_1$ a $P_n$) y dibujo de polígonos irregulares. |
+| **Dashboard Funcionario** | `docs/diseno/3_dashboard_funcionario.jpg` | Tabla de solicitudes pendientes, visor preliminar del predio y botones *Aprobar* / *Rechazar*. |
+| **Alerta de Conflicto** | `docs/diseno/4_deteccion_solapamiento.jpg` | Resaltado en rojo neón (`#e94560`) cuando se detecta solapamiento entre predios. |
+| **Mapa Urbano con Calles** | `docs/diseno/5_mapa_con_calles_urbano.jpg` | Visor catastral con calles en líneas blancas y manzanas de fondo (Sector Sincelejo / MAGNA-SIRGAS). |
+
+### 📋 Próximas Tareas de Leider (Sprint 1 - Fase 1 & 2):
+1. **Crear `dashboard-funcionario.fxml`:**
+   - Ubicación: `src/main/resources/fxml/dashboard-funcionario.fxml`.
+   - Elementos: `TableView` para solicitudes (`ID`, `Propietario`, `Área`, `Estado`, `Fecha`), panel de inspección con visor y botones `btnAprobar` y `btnRechazar`.
+2. **Crear `dashboard-propietario.fxml`:**
+   - Ubicación: `src/main/resources/fxml/dashboard-propietario.fxml`.
+   - Elementos: Formulario para ingresar coordenadas $X$ e $Y$, `TableView` de vértices añadidos, etiqueta de área calculada y botón `btnEnviarSolicitud`.
+3. **Conectar la navegación en `LoginController.java`:**
+   - Reemplazar el diálogo informativo temporal por la carga de la escena correspondiente con `FXMLLoader` y `stage.setScene(...)`.
+4. **Lienzo del Mapa (Canvas):**
+   - Implementar el fondo oscuro con la cuadrícula / calles vectoriales y el renderizado de polígonos con JavaFX `GraphicsContext`.
+
+> 💡 **Prompt recomendado para Leider (si usa ChatGPT / Claude):**
+> *"Actúa como desarrollador JavaFX 17 Senior. Necesito crear el archivo FXML y el controlador para el dashboard del [Funcionario/Propietario] de SIGCAT, un sistema catastral de predios. Debe usar la paleta de colores de nuestro `main.css` (fondo oscuro `#1a1a2e`, acentos `#e94560`, textos `#ffffff` y `#a0a0c0`). Debe contener [especificar componentes según la guía]. Proporciona el código FXML limpio y compatible con Java 17 sin librerías externas adicionales."*
+

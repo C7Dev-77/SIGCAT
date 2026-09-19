@@ -60,7 +60,14 @@ public class DatabaseInitializer {
                 );
             """);
 
-            System.out.println("[DB] Esquema inicializado correctamente.");
+            // ─── Usuarios de prueba (Semilla inicial) ─────────────
+            stmt.execute("""
+                INSERT OR IGNORE INTO usuarios (id_usuario, documento, nombre, password, rol) VALUES
+                (1, '1001', 'Carlos Pérez (Funcionario)', '123', 'FUNCIONARIO'),
+                (2, '2002', 'Ana Gómez (Propietaria)', '123', 'PROPIETARIO');
+            """);
+
+            System.out.println("[DB] Esquema y usuarios de prueba inicializados correctamente.");
         }
     }
 }

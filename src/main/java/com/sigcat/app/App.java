@@ -16,6 +16,11 @@ import java.io.IOException;
 public class App extends Application {
 
     @Override
+    public void init() throws Exception {
+        com.sigcat.utils.DatabaseInitializer.initialize();
+    }
+
+    @Override
     public void start(Stage primaryStage) throws IOException {
         FXMLLoader loader = new FXMLLoader(
             getClass().getResource("/fxml/login.fxml")
