@@ -74,3 +74,55 @@
     -fx-font-size: 12px;
     -fx-font-style: italic;
 }
+
+/* ================================================================
+   Estilos de los menús de rol (Propietario / Funcionario)
+   Leider Barreto — Fase 1
+   ================================================================ */
+
+.menu-root {
+    -fx-background-color: #1a1a2e;
+}
+
+.menu-welcome {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #ffffff;
+    -fx-padding: 10 0 10 0;
+}
+
+/* ================================================================
+   Estilos del Canvas de Dibujo
+   Leider Barreto — Fase 2
+   ================================================================ */
+
+.dibujo-root {
+    -fx-background-color: #0d0d1a;
+}
+
+.dibujo-toolbar {
+    -fx-background-color: #16213e;
+    -fx-border-color: #0f3460;
+    -fx-border-width: 1px 0 0 0;
+}
+
+.dibujo-info {
+    -fx-text-fill: #a0a0c0;
+    -fx-font-size: 13px;
+}
+
+/* ─── Botón secundario ───────────────────────────────────────── */
+.btn-secondary {
+    -fx-background-color: #0f3460;
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 13px;
+    -fx-padding: 8px 18px;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #1a4a80;
+    -fx-effect: dropshadow(gaussian, #0f3460, 6, 0.3, 0, 0);
+}
+

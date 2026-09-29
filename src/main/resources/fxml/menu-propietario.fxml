@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<!--
+    Vista del menú del Propietario - SIGCAT
+    Responsable: Leider Barreto (UI/UX)
+    Controlador: com.sigcat.controllers.MenuPropietarioController
+-->
+<VBox alignment="CENTER" spacing="20.0"
+      xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.sigcat.controllers.MenuPropietarioController"
+      styleClass="menu-root"
+      prefWidth="800" prefHeight="600">
+
+    <padding>
+        <Insets top="60.0" right="80.0" bottom="60.0" left="80.0"/>
+    </padding>
+
+    <Label text="SIGCAT" styleClass="login-title"/>
+    <Label text="Panel del Propietario" styleClass="login-subtitle"/>
+
+    <Label fx:id="lblBienvenida" styleClass="menu-welcome"/>
+
+    <Button text="📋  Registrar nuevo predio"
+            onAction="#irADibujar"
+            styleClass="btn-primary"
+            maxWidth="320"/>
+
+    <Button text="Cerrar sesión"
+            onAction="#handleCerrarSesion"
+            styleClass="btn-secondary"
+            maxWidth="320"/>
+</VBox>

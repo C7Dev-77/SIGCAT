@@ -2,9 +2,15 @@ package com.sigcat.controllers;
 
 import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.models.Usuario;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.sql.SQLException;
 import java.util.Optional;
 
@@ -25,10 +31,10 @@ public class LoginController {
 
     /**
      * Acción del botón "Ingresar".
-     * Valida campos y autentica al usuario contra la BD.
+     * Valida campos y autentica al usuario contra la BD SQLite.
      */
     @FXML
-    private void onIngresar() {
+    private void onIngresar(ActionEvent event) {
         lblError.setText("");
 
         String documento = txtDocumento.getText().trim();
@@ -40,13 +46,12 @@ public class LoginController {
             return;
         }
 
-        // ─── Autenticación ────────────────────────────────────────
+        // ─── Autenticación contra SQLite ──────────────────────────
         try {
             Optional<Usuario> resultado = usuarioDAO.autenticar(documento, password);
 
             if (resultado.isPresent()) {
-                Usuario usuario = resultado.get();
-                redirigirSegunRol(usuario);
+                rutearSegunRol(resultado.get(), event);
             } else {
                 lblError.setText("Documento o contraseña incorrectos.");
             }
@@ -57,26 +62,44 @@ public class LoginController {
     }
 
     /**
-     * Redirige al panel correspondiente según el rol del usuario.
-     * TODO: Leider implementa la navegación a las vistas de cada rol.
+     * Carga la vista correspondiente al rol del usuario autenticado
+     * y transfiere el objeto Usuario al controlador de destino.
      */
-    private void redirigirSegunRol(Usuario usuario) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Inicio de Sesión Exitoso");
-        alert.setHeaderText("¡Bienvenido al sistema, " + usuario.getNombre() + "!");
-        alert.setContentText(
-            "Rol detectado: " + usuario.getRol() + "\nDocumento: " + usuario.getDocumento() +
-            "\n\n(Próximo paso de Leider: enlazar con " + 
-            (usuario.getRol() == Usuario.Rol.FUNCIONARIO ? "dashboard-funcionario.fxml" : "dashboard-propietario.fxml") + ")"
-        );
-        alert.showAndWait();
+    private void rutearSegunRol(Usuario usuario, ActionEvent event) {
+        try {
+            String vistaFxml = switch (usuario.getRol()) {
+                case PROPIETARIO -> "/fxml/menu-propietario.fxml";
+                case FUNCIONARIO -> "/fxml/menu-funcionario.fxml";
+            };
 
-        if (usuario.getRol() == Usuario.Rol.FUNCIONARIO) {
-            System.out.println("[LOGIN] Redirigiendo a panel Funcionario: " + usuario.getNombre());
-            // TODO: cargar dashboard-funcionario.fxml
-        } else {
-            System.out.println("[LOGIN] Redirigiendo a panel Propietario: " + usuario.getNombre());
-            // TODO: cargar dashboard-propietario.fxml
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(vistaFxml));
+            Parent root = loader.load();
+
+            // Si el controlador implementa RecibeUsuario, le pasamos el usuario.
+            Object controller = loader.getController();
+            if (controller instanceof RecibeUsuario recibeUsuario) {
+                recibeUsuario.setUsuario(usuario);
+            }
+
+            Stage stage = (Stage) ((javafx.scene.Node) event.getSource()).getScene().getWindow();
+            Scene escena = new Scene(root, 800, 600);
+            escena.getStylesheets().add(
+                getClass().getResource("/styles/main.css").toExternalForm()
+            );
+            stage.setScene(escena);
+            stage.setTitle("SIGCAT - " + usuario.getNombre());
+
+        } catch (IOException e) {
+            lblError.setText("No se pudo cargar la siguiente pantalla: " + e.getMessage());
+            e.printStackTrace();
         }
+    }
+
+    /**
+     * Interfaz que deben implementar los controladores de menú que necesiten
+     * recibir el usuario autenticado sin acoplar LoginController a cada uno.
+     */
+    public interface RecibeUsuario {
+        void setUsuario(Usuario usuario);
     }
 }
