@@ -50,7 +50,7 @@ public class DibujoController {
 
     /**
      * Nota de integración (Aldo): alimentar esta lista con los predios APROBADOS convertidos a
-     * Polygon (usando validadorJts.crearPoligono(...)) antes de mostrar la pantalla.
+     * Polygon (usando usando SolapamientoValidator.construirPoligono(...)) antes de mostrar la pantalla.
      * Por ahora queda vacía para poder probar el Canvas independientemente.
      */
     private List<Polygon> prediosAprobados = new ArrayList<>();
