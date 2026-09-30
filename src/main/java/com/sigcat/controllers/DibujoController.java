@@ -1,8 +1,10 @@
 package com.sigcat.controllers;
 
-import com.sigcat.logic.PoligonoJtsValidator;
-import com.sigcat.logic.ShoelaceCalculator;
+import com.sigcat.geometry.ShoelaceCalculator;
+import com.sigcat.geometry.SolapamientoValidator;
+import com.sigcat.geometry.VerticeAdapter;
 import com.sigcat.models.Usuario;
+import com.sigcat.models.Vertice;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -45,7 +47,6 @@ public class DibujoController {
     @FXML private Label lblEstado;
 
     private final List<Point2D> vertices = new ArrayList<>();
-    private final PoligonoJtsValidator validadorJts = new PoligonoJtsValidator();
 
     /**
      * Nota de integración (Aldo): alimentar esta lista con los predios APROBADOS convertidos a
@@ -97,13 +98,16 @@ public class DibujoController {
         poligonoCerrado = true;
         redibujarCanvas();
 
-        // Cálculo de área con Shoelace (temporal — reemplazar por la clase de Andrés).
-        double area = ShoelaceCalculator.calcularArea(vertices);
+        // Convertir los puntos del Canvas al modelo Vertice usado por la lógica geométrica oficial.
+        List<Vertice> verticesModelo = VerticeAdapter.desdeCanvas(vertices);
+
+        // Cálculo de área con el algoritmo de Shoelace (Andrés Diaz - Desarrollador Core).
+        double area = ShoelaceCalculator.calcularArea(verticesModelo);
         lblArea.setText(String.format("Área: %.2f px²", area));
 
-        // Validación de solapamiento con JTS.
-        Polygon poligonoNuevo = validadorJts.crearPoligono(vertices);
-        boolean solapa = validadorJts.existeSolapamiento(poligonoNuevo, prediosAprobados);
+        // Validación de solapamiento con JTS (Andrés Diaz - Desarrollador Core).
+        Polygon poligonoNuevo = SolapamientoValidator.construirPoligono(verticesModelo);
+        boolean solapa = SolapamientoValidator.existeSolapamiento(poligonoNuevo, prediosAprobados);
 
         if (solapa) {
             lblEstado.setText("⚠ Este predio se solapa con uno ya aprobado. No se puede registrar.");
