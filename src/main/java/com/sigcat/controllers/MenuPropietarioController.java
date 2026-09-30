@@ -1,6 +1,16 @@
 package com.sigcat.controllers;
 
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.List;
+
+import org.locationtech.jts.geom.Polygon;
+
+import com.sigcat.dao.PredioDAO;
+import com.sigcat.geometry.SolapamientoValidator;
+import com.sigcat.models.Predio;
 import com.sigcat.models.Usuario;
+
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -8,8 +18,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.stage.Stage;
-
-import java.io.IOException;
 
 /**
  * Controlador del menú del Propietario (Fase 1 & 2).
@@ -43,7 +51,18 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
 
         DibujoController controller = loader.getController();
         controller.setPropietario(usuario);
-        // Nota de integración (Aldo): llamar a controller.setPrediosAprobados(...) con los predios de la BD aquí.
+
+        try {
+            PredioDAO predioDAO = new PredioDAO();
+            List<Predio> aprobados = predioDAO.listarAprobadosConVertices();
+            List<Polygon> poligonosAprobados = aprobados.stream()
+                .map(p -> SolapamientoValidator.construirPoligono(p.getVertices()))
+                .toList();
+            controller.setPrediosAprobados(poligonosAprobados);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // El Canvas se muestra igual, pero sin predios previos cargados para comparar.
+        }
 
         Stage stage = (Stage) ((javafx.scene.Node) event.getSource()).getScene().getWindow();
         Scene scene = new Scene(root, 1024, 768);

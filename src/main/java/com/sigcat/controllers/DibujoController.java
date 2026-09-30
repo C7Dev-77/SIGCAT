@@ -23,6 +23,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.sigcat.dao.PredioDAO;
+import com.sigcat.models.Predio;
+
+import java.sql.SQLException;
+
 /**
  * Controlador del Canvas de dibujo de predios (Fase 2 & 3).
  *
@@ -114,15 +119,26 @@ public class DibujoController {
             lblEstado.setStyle("-fx-text-fill: #e94560; -fx-font-weight: bold;");
             dibujarPoligonoCerrado(Color.web("#e94560"));
         } else {
-            String propInfo = (propietario != null) ? " (Propietario: " + propietario.getNombre() + ")" : "";
-            lblEstado.setText("✔ Sin conflictos" + propInfo + ". Listo para enviar a aprobación.");
-            lblEstado.setStyle("-fx-text-fill: #4caf50; -fx-font-weight: bold;");
             dibujarPoligonoCerrado(Color.web("#4caf50"));
-            // Nota de integración (Aldo): guardar el predio (tabla predios + vértices) en estado PENDIENTE.
+
+            try {
+                Predio predio = new Predio(propietario.getId());
+                predio.setAreaCalculada(area);
+                predio.setVertices(verticesModelo);
+                new PredioDAO().insertarConVertices(predio);
+
+                String propInfo = (propietario != null) ? " (Propietario: " + propietario.getNombre() + ")" : "";
+                lblEstado.setText("✔ Sin conflictos" + propInfo + ". Predio registrado, pendiente de aprobación.");
+                lblEstado.setStyle("-fx-text-fill: #4caf50; -fx-font-weight: bold;");
+            } catch (SQLException e) {
+                e.printStackTrace();
+                lblEstado.setText("⚠ El predio es válido pero no se pudo guardar: " + e.getMessage());
+                lblEstado.setStyle("-fx-text-fill: #e94560; -fx-font-weight: bold;");
+            }
+        }
             // Nota de integración (Cristian): mover esta validación a un Task<Boolean> para no bloquear el hilo de UI
             //                                cuando prediosAprobados sea grande.
         }
-    }
 
     @FXML
     private void handleReiniciar() {
