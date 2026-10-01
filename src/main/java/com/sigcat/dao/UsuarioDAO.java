@@ -38,6 +38,28 @@ public class UsuarioDAO {
         return Optional.empty();
     }
 
+
+        /**
+     * Busca un usuario por su id. Usado para mostrar el nombre del
+     * propietario en el panel del funcionario catastral.
+     *
+     * @return Optional con el Usuario si existe, vacío si no.
+     */
+    public Optional<Usuario> buscarPorId(int id) throws SQLException {
+        String sql = "SELECT * FROM usuarios WHERE id_usuario = ?";
+
+        Connection conn = DatabaseConnection.getInstance().getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return Optional.of(mapearResultado(rs));
+            }
+        }
+        return Optional.empty();
+    }
+
     /**
      * Inserta un nuevo usuario en la base de datos.
      *
