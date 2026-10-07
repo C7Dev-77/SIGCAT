@@ -71,6 +71,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
         );
         stage.setScene(scene);
         stage.setTitle("SIGCAT - Registrar nuevo predio");
+        stage.setResizable(false);
     }
 
     /**

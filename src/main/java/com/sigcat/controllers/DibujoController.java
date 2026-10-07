@@ -207,6 +207,7 @@ public class DibujoController {
             );
             stage.setScene(escena);
             stage.setTitle("SIGCAT - Panel del Propietario");
+            stage.setResizable(true);
         } catch (IOException e) {
             e.printStackTrace();
         }
