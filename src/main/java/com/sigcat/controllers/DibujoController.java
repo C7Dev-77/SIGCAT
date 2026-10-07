@@ -1,10 +1,21 @@
 package com.sigcat.controllers;
 
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.locationtech.jts.geom.Polygon;
+
+import com.sigcat.dao.PredioDAO;
 import com.sigcat.geometry.ShoelaceCalculator;
 import com.sigcat.geometry.SolapamientoValidator;
 import com.sigcat.geometry.VerticeAdapter;
+import com.sigcat.models.Predio;
 import com.sigcat.models.Usuario;
 import com.sigcat.models.Vertice;
+
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -17,16 +28,6 @@ import javafx.scene.control.Label;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
-import org.locationtech.jts.geom.Polygon;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import com.sigcat.dao.PredioDAO;
-import com.sigcat.models.Predio;
-
-import java.sql.SQLException;
 
 /**
  * Controlador del Canvas de dibujo de predios (Fase 2 & 3).
@@ -103,42 +104,73 @@ public class DibujoController {
         poligonoCerrado = true;
         redibujarCanvas();
 
-        // Convertir los puntos del Canvas al modelo Vertice usado por la lógica geométrica oficial.
+        lblEstado.setText("Procesando...");
+        lblEstado.setStyle("-fx-text-fill: #a0a0c0;");
+        lblArea.setText("Área: calculando...");
+
         List<Vertice> verticesModelo = VerticeAdapter.desdeCanvas(vertices);
 
-        // Cálculo de área con el algoritmo de Shoelace (Andrés Diaz - Desarrollador Core).
-        double area = ShoelaceCalculator.calcularArea(verticesModelo);
-        lblArea.setText(String.format("Área: %.2f px²", area));
+        Task<ResultadoRegistro> tarea = new Task<>() {
+            @Override
+            protected ResultadoRegistro call() {
+                double area = ShoelaceCalculator.calcularArea(verticesModelo);
 
-        // Validación de solapamiento con JTS (Andrés Diaz - Desarrollador Core).
-        Polygon poligonoNuevo = SolapamientoValidator.construirPoligono(verticesModelo);
-        boolean solapa = SolapamientoValidator.existeSolapamiento(poligonoNuevo, prediosAprobados);
+                Polygon poligonoNuevo = SolapamientoValidator.construirPoligono(verticesModelo);
+                boolean solapa = SolapamientoValidator.existeSolapamiento(poligonoNuevo, prediosAprobados);
 
-        if (solapa) {
+                if (solapa) {
+                    return new ResultadoRegistro(area, true, false, null);
+                }
+
+                try {
+                    Predio predio = new Predio(propietario.getId());
+                    predio.setAreaCalculada(area);
+                    predio.setVertices(verticesModelo);
+                    new PredioDAO().insertarConVertices(predio);
+                    return new ResultadoRegistro(area, false, true, null);
+                } catch (SQLException e) {
+                    return new ResultadoRegistro(area, false, false, e.getMessage());
+                }
+            }
+        };
+
+        tarea.setOnSucceeded(e -> aplicarResultado(tarea.getValue()));
+        tarea.setOnFailed(e -> {
+            lblEstado.setText("⚠ Error inesperado: " + tarea.getException().getMessage());
+            lblEstado.setStyle("-fx-text-fill: #e94560; -fx-font-weight: bold;");
+        });
+
+        Thread hilo = new Thread(tarea);
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    /**
+     * Actualiza la interfaz con el resultado del registro. Este método se
+     * llama siempre desde el hilo de JavaFX (vía setOnSucceeded), nunca
+     * directamente desde el Task.
+     */
+    private void aplicarResultado(ResultadoRegistro resultado) {
+        lblArea.setText(String.format("Área: %.2f px²", resultado.getArea()));
+
+        if (resultado.isSolapa()) {
             lblEstado.setText("⚠ Este predio se solapa con uno ya aprobado. No se puede registrar.");
             lblEstado.setStyle("-fx-text-fill: #e94560; -fx-font-weight: bold;");
             dibujarPoligonoCerrado(Color.web("#e94560"));
+            return;
+        }
+
+        dibujarPoligonoCerrado(Color.web("#4caf50"));
+
+        if (resultado.isGuardadoExitoso()) {
+            String propInfo = (propietario != null) ? " (Propietario: " + propietario.getNombre() + ")" : "";
+            lblEstado.setText("✔ Sin conflictos" + propInfo + ". Predio registrado, pendiente de aprobación.");
+            lblEstado.setStyle("-fx-text-fill: #4caf50; -fx-font-weight: bold;");
         } else {
-            dibujarPoligonoCerrado(Color.web("#4caf50"));
-
-            try {
-                Predio predio = new Predio(propietario.getId());
-                predio.setAreaCalculada(area);
-                predio.setVertices(verticesModelo);
-                new PredioDAO().insertarConVertices(predio);
-
-                String propInfo = (propietario != null) ? " (Propietario: " + propietario.getNombre() + ")" : "";
-                lblEstado.setText("✔ Sin conflictos" + propInfo + ". Predio registrado, pendiente de aprobación.");
-                lblEstado.setStyle("-fx-text-fill: #4caf50; -fx-font-weight: bold;");
-            } catch (SQLException e) {
-                e.printStackTrace();
-                lblEstado.setText("⚠ El predio es válido pero no se pudo guardar: " + e.getMessage());
-                lblEstado.setStyle("-fx-text-fill: #e94560; -fx-font-weight: bold;");
-            }
+            lblEstado.setText("⚠ El predio es válido pero no se pudo guardar: " + resultado.getMensajeError());
+            lblEstado.setStyle("-fx-text-fill: #e94560; -fx-font-weight: bold;");
         }
-            // Nota de integración (Cristian): mover esta validación a un Task<Boolean> para no bloquear el hilo de UI
-            //                                cuando prediosAprobados sea grande.
-        }
+    }
 
     @FXML
     private void handleReiniciar() {
