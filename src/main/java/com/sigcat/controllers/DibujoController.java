@@ -107,6 +107,7 @@ public class DibujoController {
         lblEstado.setText("Procesando...");
         lblEstado.setStyle("-fx-text-fill: #a0a0c0;");
         lblArea.setText("Área: calculando...");
+        canvasDibujo.setDisable(true);
 
         List<Vertice> verticesModelo = VerticeAdapter.desdeCanvas(vertices);
 
@@ -134,10 +135,15 @@ public class DibujoController {
             }
         };
 
-        tarea.setOnSucceeded(e -> aplicarResultado(tarea.getValue()));
+                tarea.setOnSucceeded(e -> {
+            aplicarResultado(tarea.getValue());
+            canvasDibujo.setDisable(false);
+        });
+
         tarea.setOnFailed(e -> {
             lblEstado.setText("⚠ Error inesperado: " + tarea.getException().getMessage());
             lblEstado.setStyle("-fx-text-fill: #e94560; -fx-font-weight: bold;");
+            canvasDibujo.setDisable(false);
         });
 
         Thread hilo = new Thread(tarea);
@@ -178,6 +184,7 @@ public class DibujoController {
         poligonoCerrado = false;
         lblArea.setText("Área: -");
         lblEstado.setText(propietario != null ? "Propietario: " + propietario.getNombre() : "");
+        canvasDibujo.setDisable(false);
         limpiarCanvas();
     }
 
