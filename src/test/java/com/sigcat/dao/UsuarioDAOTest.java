@@ -1,5 +1,6 @@
 package com.sigcat.dao;
 
+import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.models.Usuario;
 import com.sigcat.utils.DatabaseInitializer;
 import org.junit.jupiter.api.BeforeAll;
