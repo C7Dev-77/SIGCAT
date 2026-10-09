@@ -201,8 +201,8 @@ mvn compile
 ## 📋 10. Tareas Pendientes por Miembro
 
 ### Andrés Diaz
-- [ ] Entregar `ShoelaceCalculator.java` oficial (`com.sigcat.logic`, misma firma de método).
-- [ ] Implementar el panel del Funcionario en `MenuFuncionarioController` + actualizar `menu-funcionario.fxml`.
+- ✅ Entregar `ShoelaceCalculator.java` oficial (`com.sigcat.logic`, misma firma de método).
+- ✅ Implementar el panel del Funcionario en `MenuFuncionarioController` + actualizar `menu-funcionario.fxml`.
 
 ### Aldo Ibañez
 - [ ] Llamar `dibujoController.setPrediosAprobados(...)` antes de mostrar `dibujo.fxml` en `MenuPropietarioController.irADibujar()`.
