@@ -1,6 +1,7 @@
 package com.sigcat.dao;
 
 import com.sigcat.models.Usuario;
+import com.sigcat.security.PasswordUtil;
 import com.sigcat.utils.DatabaseConnection;
 
 import java.sql.*;
@@ -11,35 +12,38 @@ import java.util.Optional;
  * Implementa operaciones CRUD básicas y autenticación.
  *
  * Responsable: Aldo Ibañez (Persistencia)
+ * Actualizado por: Cristian Morales (Arquitecto) — Migración a BCrypt (RNF-01)
  */
 public class UsuarioDAO {
 
     /**
      * Autentica un usuario por documento y contraseña.
+     * Busca el usuario por documento y verifica la contraseña con BCrypt.
      *
      * @param documento Número de documento de identidad.
-     * @param password  Contraseña del usuario.
+     * @param password  Contraseña del usuario en texto plano.
      * @return Optional con el Usuario si las credenciales son válidas, vacío si no.
      */
     public Optional<Usuario> autenticar(String documento, String password) throws SQLException {
-        String sql = "SELECT * FROM usuarios WHERE documento = ? AND password = ?";
+        String sql = "SELECT * FROM usuarios WHERE documento = ?";
 
         Connection conn = DatabaseConnection.getInstance().getConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, documento);
-            ps.setString(2, password);
 
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 Usuario usuario = mapearResultado(rs);
-                return Optional.of(usuario);
+                String storedHash = usuario.getPassword();
+                if (PasswordUtil.checkPassword(password, storedHash)) {
+                    return Optional.of(usuario);
+                }
             }
         }
         return Optional.empty();
     }
 
-
-        /**
+    /**
      * Busca un usuario por su id. Usado para mostrar el nombre del
      * propietario en el panel del funcionario catastral.
      *
@@ -62,6 +66,8 @@ public class UsuarioDAO {
 
     /**
      * Inserta un nuevo usuario en la base de datos.
+     * Hashea la contraseña con BCrypt antes de almacenarla.
+     * El objeto Usuario no es mutado.
      *
      * @param usuario Objeto Usuario a insertar (sin id).
      * @return El id generado automáticamente.
@@ -73,7 +79,7 @@ public class UsuarioDAO {
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setString(1, usuario.getDocumento());
             ps.setString(2, usuario.getNombre());
-            ps.setString(3, usuario.getPassword());
+            ps.setString(3, PasswordUtil.hashPassword(usuario.getPassword()));
             ps.setString(4, usuario.getRol().name());
             ps.executeUpdate();
 

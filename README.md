@@ -76,8 +76,9 @@ El proyecto se organiza en dos hitos:
 | Conexión de la persistencia al flujo de dibujo (guardar predio PENDIENTE) | ✅ Conectado en `DibujoController` |
 | Alimentar el Canvas con predios aprobados desde la BD | ✅ Conectado en `MenuPropietarioController` |
 | Fat JAR ejecutable | ✅ Configurado y empaquetado (`SIGCAT-1.0-SNAPSHOT-fat.jar`) |
-| Pruebas automatizadas (Unitarias y E2E con JUnit 5) | ✅ 17 pruebas operativas y pasando al 100% |
+| Pruebas automatizadas (Unitarias y E2E con JUnit 5) | ✅ 20 pruebas operativas y pasando al 100% |
 | Validación en segundo plano (no congela la interfaz) | ✅ Implementado con `Task<ResultadoRegistro>` e hilo daemon |
+| Seguridad: Hash de contraseñas con BCrypt (RNF-01) | ✅ Implementado con factor de costo 12 y migración transparente |
 | Registro de usuarios 🆕 | 📋 |
 | Mapa real con calles y satélite 🆕 | 📋 |
 | Menús completos de Propietario 🆕 | 📋 |
@@ -579,8 +580,8 @@ Las etapas son secuenciales en lo esencial, pero el trabajo dentro de cada una s
 | ---- | ------- | ------------------------- |
 | Dos `ShoelaceCalculator` | Existían versiones en `geometry/` y `logic/` | ✅ Resuelto: consolidado en `com.sigcat.geometry.ShoelaceCalculator` y eliminado el paquete `logic/` |
 | Validación en el hilo de UI | La validación de solapamiento se ejecutaba en el hilo de JavaFX | ✅ Resuelto: ejecutado en segundo plano con `Task<ResultadoRegistro>` e hilo daemon |
-| Pruebas automatizadas | Casos de prueba de geometría y flujo | ✅ Resuelto: 17 pruebas con JUnit 5 implementadas y pasando al 100% |
-| Almacenamiento de contraseñas | Actualmente se almacenan en texto plano en la BD | 📋 Migrar a hash seguro BCrypt (Etapa B) |
+| Pruebas automatizadas | Casos de prueba de geometría y flujo | ✅ Resuelto: 20 pruebas con JUnit 5 implementadas y pasando al 100% |
+| Almacenamiento de contraseñas | Anteriormente se almacenaban en texto plano en la BD | ✅ Resuelto: migrado a hash seguro BCrypt (factor de costo 12, RNF-01) con migración transparente |
 | Estados del predio incompletos | Solo PENDIENTE / APROBADO / RECHAZADO | 📋 Ampliar con BORRADOR, DEVUELTO, EN_REVISION (Etapa A y C) |
 
 ---

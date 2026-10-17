@@ -2,6 +2,7 @@ package com.sigcat.dao;
 
 import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.models.Usuario;
+import com.sigcat.security.PasswordUtil;
 import com.sigcat.utils.DatabaseInitializer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * de la matriz de casos de prueba del Login.
  *
  * Responsable: José Sánchez (QA)
+ * Actualizado por: Cristian Morales (Arquitecto) — Pruebas BCrypt (RNF-01)
  */
 class UsuarioDAOTest {
 
@@ -67,5 +69,41 @@ class UsuarioDAOTest {
         Optional<Usuario> resultado = usuarioDAO.buscarPorId(9999);
 
         assertTrue(resultado.isEmpty(), "No debería encontrar un usuario con id inexistente");
+    }
+
+    // ─── Pruebas nuevas para BCrypt (RNF-01) ───
+
+    @Test
+    void hashearPasswordDebeProducirHashDiferenteCadaVez() {
+        // Verifica que BCrypt usa salt aleatorio: dos hashes del mismo texto son distintos
+        String password = "123";
+        String hash1 = PasswordUtil.hashPassword(password);
+        String hash2 = PasswordUtil.hashPassword(password);
+
+        assertNotEquals(hash1, hash2, "BCrypt debe generar hashes distintos cada vez (salt aleatorio)");
+        // Pero ambos deben validar correctamente contra la misma contraseña
+        assertTrue(PasswordUtil.checkPassword(password, hash1), "hash1 debe validar correctamente");
+        assertTrue(PasswordUtil.checkPassword(password, hash2), "hash2 debe validar correctamente");
+    }
+
+    @Test
+    void checkPasswordCorrectoDebeRetornarTrue() {
+        // Verifica que PasswordUtil valida correctamente una contraseña contra su hash
+        String password = "miPasswordSegura123";
+        String hash = PasswordUtil.hashPassword(password);
+
+        assertTrue(PasswordUtil.checkPassword(password, hash),
+            "checkPassword debe retornar true para contraseña correcta");
+    }
+
+    @Test
+    void checkPasswordIncorrectoDebeRetornarFalse() {
+        // Verifica el rechazo de contraseña incorrecta
+        String password = "passwordCorrecta";
+        String wrongPassword = "passwordIncorrecta";
+        String hash = PasswordUtil.hashPassword(password);
+
+        assertFalse(PasswordUtil.checkPassword(wrongPassword, hash),
+            "checkPassword debe retornar false para contraseña incorrecta");
     }
 }
