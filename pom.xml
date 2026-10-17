@@ -128,32 +128,72 @@
                 </configuration>
             </plugin>
 
-            <!-- Maven Shade Plugin: genera el Fat JAR ejecutable (Fase 4) -->
+            <!--
+                Maven Shade Plugin: genera el Fat JAR ejecutable (Fase 4)
+                Responsable: Cristian Morales (Arquitecto)
+
+                Transformers aplicados:
+                  1. ManifestResourceTransformer → escribe el Main-Class en MANIFEST.MF
+                     apuntando a MainLauncher (no extiende Application, evita el error
+                     "JavaFX runtime components are missing" al ejecutar con java -jar).
+                  2. ServicesResourceTransformer → fusiona los archivos de ServiceLoader
+                     (META-INF/services/*) de todos los JARs en uno solo.
+                     CRÍTICO para SQLite JDBC (org.sqlite.JDBC) y JTS: sin este transformer,
+                     Class.forName() o DriverManager.getConnection() lanzan
+                     "No suitable driver found" dentro del fat JAR.
+
+                Filtros aplicados:
+                  - Se excluyen ficheros de firma (.SF, .DSA, .RSA) que causan
+                    SecurityException al mezclar JARs firmados en un único artefacto.
+                  - Se excluyen los module-info.class para evitar conflictos de módulos
+                    al correr en classpath (modo sin módulos).
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.6.0</version>
                 <executions>
                     <execution>
+                        <id>fat-jar</id>
                         <phase>package</phase>
                         <goals>
                             <goal>shade</goal>
                         </goals>
                         <configuration>
+                            <!-- No genera dependency-reduced-pom.xml: mantiene target/ limpio -->
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+
+                            <!-- El fat JAR se llama SIGCAT-1.0-SNAPSHOT-fat.jar -->
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>fat</shadedClassifierName>
+
                             <transformers>
+                                <!-- 1. Escribe Main-Class en MANIFEST.MF -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>${main.class}</mainClass>
+                                    <manifestEntries>
+                                        <Implementation-Title>SIGCAT</Implementation-Title>
+                                        <Implementation-Version>${project.version}</Implementation-Version>
+                                    </manifestEntries>
                                 </transformer>
+
+                                <!-- 2. Fusiona META-INF/services/* de todos los JARs -->
+                                <!--    Sin esto, SQLite JDBC no encuentra el driver    -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
-                            <!-- Filtro para evitar conflictos de firmas en JARs -->
+
+                            <!-- Filtros para evitar conflictos al fusionar JARs -->
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
+                                        <!-- Firmas digitales de JARs individuales (causan SecurityException) -->
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <!-- module-info.class: evita conflictos en classpath sin módulos -->
+                                        <exclude>module-info.class</exclude>
+                                        <exclude>META-INF/versions/*/module-info.class</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
