@@ -51,6 +51,8 @@ Para lograrlo, el proyecto pasa de ser "un lienzo que dibuja polígonos" a ser u
 
 > ⚖️ **Nota de alcance legal:** SIGCAT es un sistema académico y de piloto. **No sustituye** los procesos catastrales oficiales, que corresponden a entidades como el IGAC o los catastros descentralizados. El piloto se plantea con datos de prueba o con una entidad que acepte evaluarlo explícitamente.
 
+> ☕ **Restricción técnica innegociable — 100% Java puro:** El desarrollo del software es **estrictamente 100% Java (Java 17 LTS y JavaFX 21)**. Se prohíbe el uso de tecnologías web (HTML, JavaScript, CSS web o navegadores embebidos como WebView). Todos los módulos (mapa interactivo con teselas, proyección de coordenadas, motor geométrico, base de datos y GUI) se implementan con componentes nativos de Java y JavaFX.
+
 ---
 
 ## 📊 2. Estado actual del proyecto
@@ -276,9 +278,9 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    A[Cliente JavaFX<br/>Propietario / Funcionario / Administrador] -->|HTTPS| B[API REST<br/>Java / Spring Boot]
-    A --> M[Mapa Leaflet<br/>en WebView]
-    M -->|teselas| T[OpenStreetMap / Esri]
+    A[Cliente JavaFX 100% Java<br/>Propietario / Funcionario / Administrador] -->|HTTPS| B[API REST<br/>Java / Spring Boot]
+    A --> M[Mapa nativo JavaFX<br/>Canvas + Teselas OSM/Esri]
+    M -->|HTTP teselas| T[Servidores de teselas<br/>OpenStreetMap / Esri]
     B --> P[(PostgreSQL + PostGIS)]
     B --> F[Almacenamiento de documentos]
 ```
@@ -293,44 +295,48 @@ flowchart LR
 
 | ID | Decisión | Alternativas consideradas | Estado |
 | -- | -------- | ------------------------- | ------ |
-| ADR-001 | Mapa con **Leaflet dentro de un WebView de JavaFX**, con capas OpenStreetMap y Esri (sin API key) | Google Maps (requiere clave y facturación); Gluon Maps (nativo, pero con pocas capas y casi sin herramientas de dibujo) | 📋 Propuesta |
+| ADR-001 | Mapa nativo en **JavaFX Canvas (100% Java)** cargando teselas de OpenStreetMap y Esri con proyección Web Mercator | WebView con Leaflet/JS (descartado por requisito de asignatura: 100% Java puro); Google Maps (descartado por costos y API key) | ✅ Aprobada (100% Java) |
 | ADR-002 | **Backend + PostgreSQL/PostGIS** como base de datos central | Mantener SQLite local (no sirve para multiusuario real); escritorio conectado directo a una BD remota (inseguro: credenciales en el cliente) | ⚠️ Pendiente de decisión |
 | ADR-003 | Guardar coordenadas en **WGS84 (lon/lat)** y calcular áreas tras proyectar a metros | Guardar en un sistema proyectado (p. ej. MAGNA-SIRGAS Origen Nacional, EPSG:9377), más exacto pero con más complejidad | 📋 Propuesta |
-| ADR-004 | Mantener **JavaFX** como cliente para la entrega académica, con capas desacopladas para poder migrar a web | Cliente web completo (más natural para el ciudadano, pero implica reescribir las vistas) | ⚠️ Pendiente de decisión |
+| ADR-004 | Mantener **JavaFX 21** como cliente exclusivo de escritorio para la entrega académica (100% Java) | Cliente web (descartado: la asignatura exige aplicación de escritorio en Java) | ✅ Aprobada |
 
 > Cada ADR se documentará con contexto, decisión y consecuencias en `docs/adr/` cuando el equipo la ratifique.
 
 ---
 
-## 🧭 9. Módulo de mapa interactivo 🆕
+## 🧭 9. Módulo de mapa interactivo (100% Java puro) 🆕
 
-**Objetivo:** reemplazar el Canvas de coordenadas relativas por un mapa real, para que el usuario vea el lugar exacto donde marca el terreno.
+**Objetivo:** enriquecer el Canvas nativo de JavaFX para que descargue y renderice teselas (tiles) de mapas reales de calles y satélite, permitiendo al usuario dibujar sobre terreno georreferenciado real en Sincelejo, Sucre.
+
+**Decisión técnica clave:** El mapa se construye **estrictamente en JavaFX nativo** (`Canvas`, `GraphicsContext`, `Image` y eventos de mouse), **sin HTML, sin JavaScript y sin WebView**.
 
 **Capacidades previstas:**
 
-- Capas conmutables de **calles** y **satélite** (mejor vista del terreno).
-- Mapa centrado en **Sincelejo y alrededores**, con zoom, escala y búsqueda de lugares.
-- Dibujo del predio con clics, cierre al tocar el primer vértice y **vértices arrastrables** para ajustar.
-- Predios aprobados como contexto visual, sin bloquear el dibujo.
-- Aviso visual inmediato: el polígono cambia de color si hay conflicto.
-- Mapa general para el funcionario.
+- Capas conmutables de **calles** (OpenStreetMap) y **satélite** (Esri World Imagery) descargadas en segundo plano mediante `javafx.scene.image.Image`.
+- Mapa centrado en **Sincelejo y alrededores** (Lat: 9.3047, Lon: -75.3978), con paneo (arrastrar con ratón) y zoom (rueda de desplazamiento).
+- Proyección Web Mercator (EPSG:3857) implementada en Java puro (`GeoProjection.java`) para transformar bidireccionalmente entre coordenadas geográficas WGS84 (grados) y píxeles del Canvas.
+- Dibujo del predio con clics directos sobre el Canvas, cierre al tocar el primer vértice y ajuste de vértices.
+- Predios aprobados dibujados como contexto visual poligonal sobre el mapa base.
+- Aviso visual inmediato: el polígono cambia de color si hay conflicto de solapamiento (detectado con JTS).
+- Mapa general para el funcionario con visor de predios aprobados.
 
 **Convenciones técnicas (contrato para todo el equipo):**
 
 | Aspecto | Convención |
 | ------- | ---------- |
-| Sistema de coordenadas almacenado | WGS84 |
-| Representación de un vértice | `x = longitud`, `y = latitud` (en JTS y `Point2D`) |
-| Orden en Leaflet | `[latitud, longitud]` (**inverso**; fuente típica de errores) |
-| Cálculo de área | Convertir primero a **metros** y luego aplicar Shoelace; nunca calcular sobre grados |
+| Implementación | 100% Java nativo en JavaFX (`Canvas`), sin HTML/JS ni WebView |
+| Sistema de coordenadas almacenado | WGS84 (grados decimales) |
+| Representación de un vértice en Java | `coord_x = longitud`, `coord_y = latitud` (en JTS, SQLite y `Point2D`) |
+| Proyección en pantalla | Web Mercator EPSG:3857 calculada en `GeoProjection.java` |
+| Cálculo de área | Convertir primero a **metros** (o cálculo geodésico esférico) y luego aplicar Shoelace; nunca calcular sobre grados |
 | Esquema de BD | `coord_x` = longitud, `coord_y` = latitud |
-| Formato numérico hacia el mapa | Siempre con punto decimal, sin depender de la configuración regional |
+| Formato numérico | Siempre con punto decimal (`Locale.US`), sin depender de la configuración regional |
 
 **Consideraciones:**
 
-- Requiere **conexión a internet** para cargar el mapa. Como alternativa para demos sin red se puede empaquetar la librería Leaflet localmente, pero las teselas del mapa siempre requieren conexión.
-- Respetar las **atribuciones** de OpenStreetMap y Esri y sus políticas de uso (adecuadas para un proyecto académico y piloto pequeño).
-- Los predios del prototipo con coordenadas relativas **no son compatibles** con el mapa real y deberán descartarse o recrearse.
+- Requiere **conexión a internet** para descargar las imágenes de las teselas. Como contingencia para demos sin internet, el cargador de teselas en Java puede almacenar una caché local en disco (`.cache/tiles/`).
+- Respetar las **atribuciones** de OpenStreetMap y Esri en la esquina inferior del Canvas.
+- Los predios del prototipo inicial con coordenadas relativas de píxeles no son compatibles con el mapa real y deben recrearse sobre coordenadas WGS84.
 
 ---
 
@@ -432,17 +438,18 @@ La lista es **orientativa**; los nombres definitivos se acordarán durante el di
 
 ```
 src/main/java/com/sigcat/
-    ├── map/
-    │   └── MapaView.java                 ← Componente que encapsula el mapa Leaflet en WebView
-    ├── logic/
-    │   └── GeoUtils.java                 ← Conversión lon/lat → metros para el cálculo de área
+    ├── geometry/                         ← Cálculos espaciales, Shoelace y proyección geográfica
+    │   ├── GeoProjection.java            ← Proyección Web Mercator (EPSG:3857) WGS84 ↔ Píxeles Canvas
+    │   └── GeodesicAreaCalculator.java   ← Cálculo de área real en m² y ha
+    ├── map/                              ← Módulo de mapa nativo JavaFX (100% Java)
+    │   ├── TileManager.java              ← Descarga y caché de teselas OSM/Esri con JavaFX Image
+    │   └── MapaCanvas.java               ← Componente Canvas con paneo, zoom y dibujo sobre teselas
     ├── services/                         ← Lógica de negocio y reglas de autorización por rol
-    ├── security/                         ← Hash de contraseñas y gestión de sesión
+    ├── security/                         ← Hash de contraseñas con BCrypt (PasswordUtil ✅)
     └── controllers/                      ← Registro, paneles de propietario, funcionario y administrador
 
 src/main/resources/
-    ├── map/mapa.html                     ← Página del mapa (Leaflet)
-    └── fxml/                             ← Vistas de registro, dashboard, detalle de predio, bandeja, administración
+    └── fxml/                             ← Vistas FXML de login, dibujo, paneles y administración
 ```
 
 Si se aprueba el backend (ADR-002), se añadirá un módulo/repositorio separado para la API y la capa DAO del cliente será reemplazada por un cliente de la API.
@@ -512,7 +519,7 @@ Las etapas son secuenciales en lo esencial, pero el trabajo dentro de cada una s
 #### Etapa C: Módulo del Propietario y mapa 📋
 
 - **Objetivo:** experiencia completa del propietario con el mapa real.
-- **Entregables:** dashboard, "Mis predios", formulario de datos catastrales, **mapa Leaflet integrado**, borradores, adjuntos, corrección y reenvío, cancelación, notificaciones y perfil.
+- **Entregables:** dashboard, "Mis predios", formulario de datos catastrales, **mapa interactivo nativo JavaFX integrado**, borradores, adjuntos, corrección y reenvío, cancelación, notificaciones y perfil.
 - **Responsables propuestos:** Leider (UI y mapa), Andrés (conversión a metros, área y solapamiento), Aldo (persistencia).
 - **Criterio de salida:** un propietario registra un predio sobre el mapa de Sincelejo, lo envía y puede seguir su estado.
 
@@ -551,7 +558,7 @@ Las etapas son secuenciales en lo esencial, pero el trabajo dentro de cada una s
 | Guardar predio | **Leider** invoca | **Aldo** implementa | ✅ Implementado en `DibujoController` mediante `PredioDAO.insertarConVertices(predio)`. |
 | Cálculo de área | **Andrés** | **Leider** (`DibujoController`) | ✅ Implementado vía `ShoelaceCalculator.calcularArea(...)` utilizando `VerticeAdapter` para adaptar `Point2D`. |
 | Panel funcionario | **Andrés** | `menu-funcionario.fxml` | ✅ Operativo en `MenuFuncionarioController` con `TableView` y actualización de estado en `PredioDAO`. |
-| Componente de mapa 🆕 | **Leider** | Controladores de propietario y funcionario | Componente único de mapa con API Java (limpiar, centrar, marcar conflicto, cargar predios aprobados, notificar polígono cerrado). Ningún controlador debe manipular JavaScript directamente. |
+| Componente de mapa 🆕 | **Leider** | Controladores de propietario y funcionario | Componente nativo en JavaFX (`Canvas` + `TileManager`) con API Java limpia (limpiar, centrar, marcar conflicto, cargar predios aprobados, notificar polígono cerrado). 100% Java, sin JavaScript ni HTML. |
 | Validación asíncrona (riesgo de UI) | **Cristian** | `DibujoController` | ✅ Implementado con `Task<ResultadoRegistro>` e hilo daemon (`sigcat-validador`) para no congelar la UI. |
 | Acceso a datos 🆕 | **Aldo** | Servicios y controladores | Los controladores no acceden a la BD directamente; usan la capa de servicios. Facilita migrar de DAO local a API remota. |
 
@@ -567,7 +574,7 @@ Las etapas son secuenciales en lo esencial, pero el trabajo dentro de cada una s
 | 🆕 **Alcance demasiado grande para el tiempo del semestre** | Alto | Priorizar por etapas; definir un **MVP del piloto** (registro, mapa, flujo de aprobación) y dejar lo demás como mejora; revisar avance en cada etapa | Cristian |
 | 🆕 Decisión de arquitectura sin cerrar (ADR-002 / ADR-004) | Alto | Cerrarla en la Etapa A, antes de construir el núcleo | Cristian y equipo |
 | 🆕 Datos personales de propietarios (Ley 1581 de 2012) | Alto | Aviso y consentimiento en el registro, mínimo de datos necesarios, acceso por rol y auditoría | Cristian y José |
-| 🆕 Dependencia de internet y de servicios de mapas de terceros | Medio | Plan de contingencia para demos (Leaflet local, capturas de respaldo); respetar políticas de uso de los proveedores | Leider |
+| 🆕 Dependencia de internet y de servicios de mapas de terceros | Medio | Plan de contingencia para demos (caché local de teselas en disco en Java puro); respetar políticas de uso de los proveedores | Leider |
 | 🆕 Errores por orden de coordenadas (lat/lon) o por unidades (grados vs. metros) | Medio | Contrato documentado (sección 9), utilidad geográfica única y pruebas unitarias específicas | Andrés y José |
 | 🆕 Conflictos de integración entre cinco personas | Medio | Ramas por funcionalidad, Pull Requests con revisión, contratos de interfaz (sección 13) | Cristian |
 | 🆕 Datos antiguos con coordenadas relativas | Bajo | Descartarlos o recrearlos al activar el mapa real | Aldo |
@@ -601,7 +608,7 @@ Una tarea se considera finalizada solo si:
 ### Flujo de trabajo propuesto 🆕
 
 - `main` siempre debe estar estable y ejecutable.
-- Cada funcionalidad se desarrolla en una **rama propia** (por ejemplo, `feature/mapa-leaflet`) y se integra mediante **Pull Request**.
+- Cada funcionalidad se desarrolla en una **rama propia** (por ejemplo, `feature/mapa-canvas`) y se integra mediante **Pull Request**.
 - Los *issues* de GitHub describen cada tarea con criterios de aceptación y responsable.
 - Mensajes de commit claros y descriptivos.
 - Antes de integrar un cambio que toque un punto de integración (sección 13), avisar al otro miembro involucrado.
@@ -654,7 +661,7 @@ mvn compile
 5. Haz clic cerca del círculo naranja (primer vértice) para cerrar el polígono.
 6. Verás el área calculada y el estado de solapamiento.
 
-> 🆕 Al integrar el mapa se añadirá la dependencia `javafx-web` al `pom.xml`, y el paso 4 se realizará sobre el mapa real.
+> 🆕 El mapa interactivo se renderiza directamente sobre el `Canvas` de JavaFX usando descarga de teselas en segundo plano con `Image` y la proyección Web Mercator en Java, sin requerir dependencias web externas.
 
 ---
 
@@ -679,7 +686,7 @@ mvn compile
 - ✅ Mover la validación de solapamiento a un `Task<ResultadoRegistro>` asíncrono con hilo daemon (sin bloquear JavaFX).
 - ✅ Configurar el Fat JAR ejecutable con `maven-shade-plugin` y merge de servicios JDBC (`SIGCAT-1.0-SNAPSHOT-fat.jar`).
 - [ ] 🆕 Redactar y cerrar los ADR (arquitectura, base de datos, cliente).
-- [ ] 🆕 Actualizar el `pom.xml` (`javafx-web` y las dependencias que se aprueben).
+- [ ] 🆕 Cerrar y verificar dependencias del proyecto 100% Java.
 - [ ] 🆕 Acordar el cambio de alcance con el docente.
 
 ### Leider Barreto
@@ -687,7 +694,7 @@ mvn compile
 - ✅ Vistas FXML principales y estilo global `main.css`.
 - ✅ Canvas interactivo y retroalimentación visual de dibujo.
 - [ ] 🆕 Prototipos de pantallas (registro, dashboard de propietario, detalle de predio, panel de funcionario).
-- [ ] 🆕 Componente de mapa interactivo (Leaflet/WebView) y su integración en `DibujoController`.
+- [ ] 🆕 Componente de mapa interactivo nativo JavaFX (Canvas + TileManager) y su integración en `DibujoController`.
 - [ ] 🆕 Menús y vistas faltantes del propietario.
 
 ### José Sánchez (QA)
@@ -727,8 +734,9 @@ mvn compile
 | **Algoritmo de Shoelace** | Fórmula que calcula el área de un polígono a partir de las coordenadas de sus vértices. |
 | **JTS Topology Suite** | Librería Java para operaciones geométricas (intersecciones, validez de polígonos). |
 | **PostGIS** | Extensión espacial de PostgreSQL para almacenar y consultar geometrías. |
-| **WGS84** | Sistema de coordenadas geográficas (longitud y latitud) usado por los mapas web y el GPS. |
-| **Leaflet** | Librería de mapas interactivos en JavaScript. |
+| **WGS84** | Sistema de coordenadas geográficas (longitud y latitud) usado por los mapas y el GPS. |
+| **Tesela (Map Tile)** | Imagen cuadrada (generalmente 256x256 px) descargada y renderizada por JavaFX en el Canvas para conformar el mapa base. |
+| **Web Mercator (EPSG:3857)** | Proyección matemática estándar implementada en Java para convertir coordenadas geográficas WGS84 a píxeles. |
 | **ADR** | *Architecture Decision Record*: documento breve que registra una decisión de arquitectura y su razón. |
 | **MVC** | Patrón que separa Modelo, Vista y Controlador. |
 | **DAO** | *Data Access Object*: patrón para aislar el acceso a la base de datos. |
