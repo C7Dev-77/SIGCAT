@@ -20,23 +20,55 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
+import javafx.fxml.Initializable;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.cell.PropertyValueFactory;
+
+import java.net.URL;
+import java.util.ResourceBundle;
 /**
  * Controlador del panel del Funcionario catastral (Fase 4).
  * Lista los predios PENDIENTES y permite aprobarlos o rechazarlos.
  *
  * Responsable: Andrés Diaz (Desarrollador Core)
  */
-public class MenuFuncionarioController implements LoginController.RecibeUsuario {
+
+
+public class MenuFuncionarioController implements LoginController.RecibeUsuario, Initializable {
 
     @FXML private Label lblBienvenida;
     @FXML private Label lblMensaje;
     @FXML private TableView<SolicitudRow> tablaSolicitudes;
+    @FXML private TableColumn<SolicitudRow, String> colEstado;
 
     private final PredioDAO predioDAO = new PredioDAO();
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
     private Usuario funcionario;
 
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
+        colEstado.setCellFactory(column -> new TableCell<>() {
+            @Override
+            protected void updateItem(String estado, boolean empty) {
+                super.updateItem(estado, empty);
+                if (empty || estado == null) {
+                    setGraphic(null);
+                    return;
+                }
+                Label badge = new Label(estado);
+                badge.getStyleClass().add("badge-estado");
+                switch (estado) {
+                    case "APROBADO" -> badge.getStyleClass().add("badge-aprobado");
+                    case "RECHAZADO" -> badge.getStyleClass().add("badge-rechazado");
+                    default -> badge.getStyleClass().add("badge-pendiente");
+                }
+                setGraphic(badge);
+            }
+        });
+    }
     @Override
     public void setUsuario(Usuario usuario) {
         this.funcionario = usuario;

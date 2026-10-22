@@ -126,3 +126,16 @@
     -fx-effect: dropshadow(gaussian, #0f3460, 6, 0.3, 0, 0);
 }
 
+/* Badges de estado (tabla del Funcionario) */
+.badge-estado {
+    -fx-padding: 4 12 4 12;
+    -fx-background-radius: 12;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: white;
+    -fx-alignment: center;
+}
+
+.badge-pendiente { -fx-background-color: #f0a500; }
+.badge-aprobado { -fx-background-color: #4caf50; }
+.badge-rechazado { -fx-background-color: #e94560; }
