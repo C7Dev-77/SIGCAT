@@ -4,7 +4,6 @@ import com.sigcat.models.Predio;
 import com.sigcat.models.Vertice;
 import com.sigcat.utils.DatabaseInitializer;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
