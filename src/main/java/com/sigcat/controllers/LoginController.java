@@ -82,8 +82,8 @@ public class LoginController {
             }
 
             Stage stage = (Stage) ((javafx.scene.Node) event.getSource()).getScene().getWindow();
-            Scene escena = new Scene(root, 800, 600);
-            escena.getStylesheets().add(
+            boolean esFuncionario = usuario.getRol() == Usuario.Rol.FUNCIONARIO;
+            Scene escena = new Scene(root, esFuncionario ? 1100 : 800, esFuncionario ? 680 : 600);            escena.getStylesheets().add(
                 getClass().getResource("/styles/main.css").toExternalForm()
             );
             stage.setScene(escena);

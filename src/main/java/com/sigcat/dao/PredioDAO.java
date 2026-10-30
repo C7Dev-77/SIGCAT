@@ -105,6 +105,28 @@ public class PredioDAO {
         return resultado;
     }
 
+            /**
+     * Lista todos los predios (sin cargar vértices). Primero van los
+     * pendientes y luego el resto, del más nuevo al más antiguo.
+     */
+    public List<Predio> listarTodos() throws SQLException {
+        String sql = "SELECT * FROM predios "
+                   + "ORDER BY CASE estado WHEN 'PENDIENTE' THEN 0 ELSE 1 END, id_predio DESC";
+        List<Predio> resultado = new ArrayList<>();
+
+        Connection conn = DatabaseConnection.getInstance().getConnection();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                resultado.add(mapearResultado(rs));
+            }
+        }
+        return resultado;
+    }
+
+
+
+
     /**
      * Actualiza el estado de un predio (aprobar/rechazar) y asigna el
      * funcionario que tomó la decisión.

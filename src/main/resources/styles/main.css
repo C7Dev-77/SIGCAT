@@ -139,3 +139,251 @@
 .badge-pendiente { -fx-background-color: #f0a500; }
 .badge-aprobado { -fx-background-color: #4caf50; }
 .badge-rechazado { -fx-background-color: #e94560; }
+
+/* ================================================================
+   Pantalla de dibujo estilo GIS
+   ================================================================ */
+
+.gis-root { -fx-background-color: #0b1324; }
+.gis-canvas-area { -fx-background-color: #0b1324; }
+
+.gis-navbar {
+    -fx-background-color: #111a2e;
+    -fx-border-color: #26324b;
+    -fx-border-width: 0 0 1 0;
+}
+.gis-logo { -fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #f1f5f9; }
+.gis-username { -fx-text-fill: #cbd5e1; -fx-font-size: 13px; }
+.gis-avatar-text { -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: bold; }
+
+.gis-sidebar {
+    -fx-background-color: #111a2e;
+    -fx-border-color: #26324b;
+    -fx-border-width: 0 1 0 0;
+}
+.gis-section-title { -fx-text-fill: #64748b; -fx-font-size: 11px; -fx-font-weight: bold; }
+.gis-input-label { -fx-text-fill: #94a3b8; -fx-font-size: 12px; }
+
+.gis-bottombar {
+    -fx-background-color: #111a2e;
+    -fx-border-color: #26324b;
+    -fx-border-width: 1 0 0 0;
+}
+.gis-area-caption { -fx-text-fill: #94a3b8; -fx-font-size: 12px; }
+.gis-area-value { -fx-text-fill: white; -fx-font-size: 26px; -fx-font-weight: bold; }
+.gis-mensaje { -fx-font-size: 13px; }
+
+.btn-blue {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 10px 18px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+.btn-blue:hover {
+    -fx-background-color: #2563eb;
+    -fx-effect: dropshadow(gaussian, #3b82f6, 10, 0.3, 0, 0);
+}
+.btn-blue:disabled {
+    -fx-background-color: #1e3a6e;
+    -fx-text-fill: #7f93b8;
+    -fx-opacity: 1;
+}
+
+.btn-blue-lg {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-padding: 14px 28px;
+    -fx-background-radius: 10px;
+    -fx-cursor: hand;
+}
+.btn-blue-lg:hover {
+    -fx-background-color: #2563eb;
+    -fx-effect: dropshadow(gaussian, #3b82f6, 12, 0.35, 0, 0);
+}
+.btn-blue-lg:disabled {
+    -fx-background-color: #1e3a6e;
+    -fx-text-fill: #7f93b8;
+    -fx-opacity: 1;
+}
+
+.zoom-btn {
+    -fx-background-color: #1b2740;
+    -fx-text-fill: #e2e8f0;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-min-width: 36px;
+    -fx-min-height: 36px;
+    -fx-background-radius: 8px;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+}
+.zoom-btn:hover { -fx-background-color: #25344f; }
+
+/* Tabla oscura */
+.tabla-oscura {
+    -fx-control-inner-background: #0f1a30;
+    -fx-control-inner-background-alt: #131f38;
+    -fx-table-cell-border-color: #1c2740;
+    -fx-selection-bar: #1d4ed8;
+    -fx-selection-bar-non-focused: #1e3a8a;
+    -fx-background-radius: 8px;
+    -fx-border-color: #26324b;
+    -fx-border-radius: 8px;
+}
+.tabla-oscura .column-header-background { -fx-background-color: #16213e; }
+.tabla-oscura .column-header {
+    -fx-background-color: #16213e;
+    -fx-border-color: #26324b;
+    -fx-border-width: 0 0 1 0;
+}
+.tabla-oscura .filler { -fx-background-color: #16213e; }
+.tabla-oscura .column-header .label {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+.tabla-oscura .table-cell { -fx-text-fill: #e2e8f0; }
+
+/* ================================================================
+   Panel del funcionario
+   ================================================================ */
+
+.stat-card {
+    -fx-background-color: #111a2e;
+    -fx-border-color: #26324b;
+    -fx-border-radius: 10px;
+    -fx-background-radius: 10px;
+    -fx-padding: 12px 18px;
+    -fx-spacing: 2px;
+}
+.stat-caption { -fx-text-fill: #94a3b8; -fx-font-size: 12px; }
+.stat-number-pendiente { -fx-text-fill: #f0a500; -fx-font-size: 28px; -fx-font-weight: bold; }
+.stat-number-aprobado { -fx-text-fill: #4caf50; -fx-font-size: 28px; -fx-font-weight: bold; }
+.stat-number-rechazado { -fx-text-fill: #e94560; -fx-font-size: 28px; -fx-font-weight: bold; }
+
+.btn-aprobar {
+    -fx-background-color: #4caf50;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 10px 28px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+.btn-aprobar:hover { -fx-background-color: #3d9140; }
+
+.btn-rechazar {
+    -fx-background-color: #e94560;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 10px 28px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+.btn-rechazar:hover { -fx-background-color: #c73652; }
+
+/* Lista desplegable oscura */
+.combo-oscuro {
+    -fx-background-color: #16213e;
+    -fx-border-color: #26324b;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+.combo-oscuro .list-cell { -fx-text-fill: #e2e8f0; -fx-background-color: transparent; }
+.combo-oscuro .arrow-button { -fx-background-color: transparent; }
+.combo-oscuro .arrow { -fx-background-color: #94a3b8; }
+.combo-box-popup .list-view { -fx-background-color: #16213e; }
+.combo-box-popup .list-cell { -fx-background-color: #16213e; -fx-text-fill: #e2e8f0; }
+.combo-box-popup .list-cell:hover { -fx-background-color: #1d4ed8; }
+
+/* ================================================================
+   Panel del funcionario: barra, tarjeta de detalle y botones
+   ================================================================ */
+
+.bell-btn {
+    -fx-background-color: transparent;
+    -fx-padding: 6px;
+    -fx-cursor: hand;
+}
+.bell-btn:hover {
+    -fx-background-color: #1b2740;
+    -fx-background-radius: 8px;
+}
+
+.detalle-card {
+    -fx-background-color: #111a2e;
+    -fx-border-color: #26324b;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+}
+.detalle-titulo { -fx-text-fill: #f1f5f9; -fx-font-size: 20px; -fx-font-weight: bold; }
+.detalle-area { -fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold; }
+.mapa-marco {
+    -fx-border-color: #26324b;
+    -fx-border-width: 1px;
+    -fx-background-color: #eef2f7;
+}
+
+.pill-ok, .pill-error, .pill-neutro {
+    -fx-padding: 4 12 4 12;
+    -fx-background-radius: 12px;
+    -fx-border-radius: 12px;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+.pill-ok { -fx-background-color: rgba(34,197,94,0.15); -fx-border-color: #22c55e; -fx-text-fill: #22c55e; }
+.pill-error { -fx-background-color: rgba(239,68,68,0.15); -fx-border-color: #ef4444; -fx-text-fill: #ef4444; }
+.pill-neutro { -fx-background-color: rgba(148,163,184,0.15); -fx-border-color: #64748b; -fx-text-fill: #94a3b8; }
+
+.btn-aprobar-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: #22c55e;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: #22c55e;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 10px 16px;
+    -fx-cursor: hand;
+}
+.btn-aprobar-outline:hover {
+    -fx-background-color: rgba(34,197,94,0.15);
+    -fx-effect: dropshadow(gaussian, #22c55e, 10, 0.3, 0, 0);
+}
+.btn-aprobar-outline:disabled {
+    -fx-border-color: #2c3b55;
+    -fx-text-fill: #55657f;
+    -fx-opacity: 1;
+    -fx-effect: none;
+}
+
+.btn-rechazar-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: #ef4444;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: #ef4444;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-padding: 10px 16px;
+    -fx-cursor: hand;
+}
+.btn-rechazar-outline:hover {
+    -fx-background-color: rgba(239,68,68,0.15);
+    -fx-effect: dropshadow(gaussian, #ef4444, 10, 0.3, 0, 0);
+}
+.btn-rechazar-outline:disabled {
+    -fx-border-color: #2c3b55;
+    -fx-text-fill: #55657f;
+    -fx-opacity: 1;
+    -fx-effect: none;
+}

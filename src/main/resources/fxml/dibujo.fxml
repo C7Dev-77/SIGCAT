@@ -1,44 +1,125 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.canvas.Canvas?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.geometry.Insets?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+<?import javafx.scene.shape.SVGPath?>
 
-<!--
-    Vista del Canvas de dibujo de predios - SIGCAT
-    Responsable: Leider Barreto (UI/UX)
-    Controlador: com.sigcat.controllers.DibujoController
-
-    Instrucciones:
-      - Haz clic en el Canvas para añadir vértices.
-      - El primer punto se marca con un círculo naranja.
-      - Haz clic cerca del primer punto (con ≥3 vértices) para cerrar el polígono.
-      - Usa "Reiniciar dibujo" para empezar de nuevo.
--->
 <BorderPane xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.sigcat.controllers.DibujoController"
-            styleClass="dibujo-root">
+            styleClass="gis-root"
+            prefWidth="1024" prefHeight="768">
+
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="gis-navbar"
+              prefHeight="56.0" minHeight="56.0">
+            <padding>
+                <Insets left="20.0" right="20.0"/>
+            </padding>
+            <SVGPath content="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"
+                     fill="#3b82f6" fillRule="EVEN_ODD"/>
+            <Label text="SIGCAT" styleClass="gis-logo"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <StackPane>
+                <Circle radius="16.0" fill="#3b82f6"/>
+                <Label fx:id="lblIniciales" styleClass="gis-avatar-text"/>
+            </StackPane>
+            <Label fx:id="lblUsuario" styleClass="gis-username"/>
+        </HBox>
+    </top>
+
+    <left>
+        <VBox spacing="12.0" styleClass="gis-sidebar"
+              prefWidth="290.0" minWidth="290.0" maxWidth="290.0">
+            <padding>
+                <Insets top="20.0" right="16.0" bottom="16.0" left="16.0"/>
+            </padding>
+
+            <Label text="NUEVO VÉRTICE" styleClass="gis-section-title"/>
+
+            <HBox spacing="10.0">
+                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                    <Label text="Coordenada X" styleClass="gis-input-label"/>
+                    <TextField fx:id="txtX" promptText="0.0" styleClass="login-field"/>
+                </VBox>
+                <VBox spacing="4.0" HBox.hgrow="ALWAYS">
+                    <Label text="Coordenada Y" styleClass="gis-input-label"/>
+                    <TextField fx:id="txtY" promptText="0.0" styleClass="login-field"/>
+                </VBox>
+            </HBox>
+
+            <Button text="Añadir Vértice +" onAction="#handleAnadirVertice"
+                    styleClass="btn-blue" maxWidth="Infinity"/>
+
+            <Label text="VÉRTICES DEL PREDIO" styleClass="gis-section-title">
+                <VBox.margin>
+                    <Insets top="8.0"/>
+                </VBox.margin>
+            </Label>
+
+            <TableView fx:id="tablaVertices" styleClass="tabla-oscura" VBox.vgrow="ALWAYS">
+                <columns>
+                    <TableColumn fx:id="colPunto" text="Punto"/>
+                    <TableColumn fx:id="colX" text="X"/>
+                    <TableColumn fx:id="colY" text="Y"/>
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                </columnResizePolicy>
+            </TableView>
+
+            <HBox spacing="8.0">
+                <Button text="Deshacer" onAction="#handleDeshacer" styleClass="btn-secondary"
+                        HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <Button text="Reiniciar" onAction="#handleReiniciar" styleClass="btn-secondary"
+                        HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            </HBox>
+
+            <Button text="← Volver al menú" onAction="#handleVolver" styleClass="btn-secondary"
+                    maxWidth="Infinity"/>
+        </VBox>
+    </left>
 
     <center>
-        <Canvas fx:id="canvasDibujo" width="1024.0" height="700.0"
-                onMouseClicked="#handleClickCanvas"
-                style="-fx-background-color: #0d0d1a;"/>
+        <StackPane fx:id="contenedorCanvas" styleClass="gis-canvas-area"
+                   minWidth="0.0" minHeight="0.0">
+            <Canvas fx:id="canvasDibujo" onMouseClicked="#handleClickCanvas"/>
+            <VBox spacing="6.0" StackPane.alignment="TOP_RIGHT"
+                  maxWidth="-Infinity" maxHeight="-Infinity">
+                <StackPane.margin>
+                    <Insets top="12.0" right="12.0"/>
+                </StackPane.margin>
+                <Button text="+" onAction="#handleZoomIn" styleClass="zoom-btn"/>
+                <Button text="−" onAction="#handleZoomOut" styleClass="zoom-btn"/>
+            </VBox>
+        </StackPane>
     </center>
 
     <bottom>
-        <HBox spacing="16.0" alignment="CENTER_LEFT" styleClass="dibujo-toolbar">
+        <HBox alignment="CENTER_LEFT" spacing="24.0" styleClass="gis-bottombar"
+              prefHeight="76.0" minHeight="76.0">
             <padding>
-                <Insets top="10" right="16" bottom="10" left="16"/>
+                <Insets left="24.0" right="24.0"/>
             </padding>
-            <Label fx:id="lblArea" text="Área: -" styleClass="dibujo-info"/>
-            <Label fx:id="lblEstado" text="" styleClass="dibujo-info" HBox.hgrow="ALWAYS"/>
-            <Button text="Reiniciar dibujo" onAction="#handleReiniciar" styleClass="btn-secondary"/>
-            <Button text="← Volver al menú" onAction="#handleVolver" styleClass="btn-secondary"/>
+            <VBox spacing="2.0" minWidth="170.0">
+                <Label text="Área Total Calculada" styleClass="gis-area-caption"/>
+                <Label fx:id="lblArea" styleClass="gis-area-value"/>
+            </VBox>
+            <Label fx:id="lblEstado" styleClass="gis-mensaje" wrapText="true"
+                   HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+            <Button fx:id="btnEnviar" text="Validar y Enviar a Catastro  ›"
+                    onAction="#handleValidarYEnviar" styleClass="btn-blue-lg" disable="true"/>
         </HBox>
     </bottom>
-
 </BorderPane>

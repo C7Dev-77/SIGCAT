@@ -1,6 +1,5 @@
 package com.sigcat.dao;
 
-import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.models.Usuario;
 import com.sigcat.security.PasswordUtil;
 import com.sigcat.utils.DatabaseInitializer;
