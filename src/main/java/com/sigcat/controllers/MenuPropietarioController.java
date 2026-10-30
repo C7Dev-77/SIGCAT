@@ -13,23 +13,23 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.Parent;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableRow;
-import javafx.scene.control.TableView;
+import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Controlador para el Dashboard del Propietario ("Mis Predios").
  * Muestra las solicitudes radicadas con semáforo de colores por estado
- * (Verde = APROBADO, Naranja = PENDIENTE, Rojo = RECHAZADO) y permite navegar al lienzo de dibujo.
+ * (Verde = APROBADO, Naranja = PENDIENTE, Rojo = RECHAZADO), permite navegar al lienzo de dibujo,
+ * inspeccionar en mapa, editar datos y eliminar solicitudes.
  */
 public class MenuPropietarioController implements LoginController.RecibeUsuario {
 
@@ -86,7 +86,9 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
         if (l1.size() != l2.size()) return false;
         for (int i = 0; i < l1.size(); i++) {
             if (l1.get(i).getId() != l2.get(i).getId() ||
-                !String.valueOf(l1.get(i).getEstado()).equals(String.valueOf(l2.get(i).getEstado()))) {
+                !String.valueOf(l1.get(i).getEstado()).equals(String.valueOf(l2.get(i).getEstado())) ||
+                !String.valueOf(l1.get(i).getNombre()).equals(String.valueOf(l2.get(i).getNombre())) ||
+                !String.valueOf(l1.get(i).getDireccion()).equals(String.valueOf(l2.get(i).getDireccion()))) {
                 return false;
             }
         }
@@ -214,9 +216,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
             Stage stage = ViewNavigator.obtenerStage(event);
             ViewNavigator.cambiarVista(stage, root, "SIGCAT — Levantamiento Georreferenciado en Sincelejo");
         } catch (IOException e) {
-            if (lblEstadoPropietario != null) {
-                lblEstadoPropietario.setText("Error al abrir el módulo cartográfico: " + e.getMessage());
-            }
+            mostrarEstado("Error al abrir el módulo cartográfico: " + e.getMessage(), "#ef4444");
         }
     }
 
@@ -224,10 +224,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
     public void verPredioEnMapa(ActionEvent event) {
         Predio seleccionado = tablaMisPredios.getSelectionModel().getSelectedItem();
         if (seleccionado == null) {
-            if (lblEstadoPropietario != null) {
-                lblEstadoPropietario.setText("Seleccione un predio de la lista para ubicarlo en el mapa.");
-                lblEstadoPropietario.setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
-            }
+            mostrarEstado("Seleccione un predio de la lista para ubicarlo en el mapa.", "#f59e0b");
             return;
         }
 
@@ -246,9 +243,119 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
             }
             ViewNavigator.cambiarVista(stage, root, "SIGCAT — Predio Georreferenciado (" + seleccionado.getCodigoCatastral() + ")");
         } catch (IOException e) {
-            if (lblEstadoPropietario != null) {
-                lblEstadoPropietario.setText("Error al abrir visor cartográfico: " + e.getMessage());
+            mostrarEstado("Error al abrir visor cartográfico: " + e.getMessage(), "#ef4444");
+        }
+    }
+
+    @FXML
+    public void eliminarPredioSeleccionado(ActionEvent event) {
+        Predio seleccionado = tablaMisPredios.getSelectionModel().getSelectedItem();
+        if (seleccionado == null) {
+            mostrarEstado("Seleccione un predio de la tabla para eliminarlo.", "#f59e0b");
+            return;
+        }
+
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Confirmar Eliminación de Predio");
+        confirm.setHeaderText("¿Eliminar la solicitud del predio " + seleccionado.getCodigoCatastral() + "?");
+        confirm.setContentText("Esta acción eliminará permanentemente el predio '" +
+                (seleccionado.getNombre() != null ? seleccionado.getNombre() : "Sin nombre") +
+                "' y todos sus linderos asociados.\n\n¿Desea continuar?");
+
+        configurarEstiloDialogo(confirm);
+
+        Optional<ButtonType> respuesta = confirm.showAndWait();
+        if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
+            boolean exito = predioDAO.eliminarPredio(seleccionado.getId());
+            if (exito) {
+                cargarMisPredios();
+                mostrarEstado("✔ Predio " + seleccionado.getCodigoCatastral() + " eliminado exitosamente.", "#22c55e");
+            } else {
+                mostrarEstado("Error al eliminar el predio de la base de datos.", "#ef4444");
             }
+        }
+    }
+
+    @FXML
+    public void editarPredioSeleccionado(ActionEvent event) {
+        Predio seleccionado = tablaMisPredios.getSelectionModel().getSelectedItem();
+        if (seleccionado == null) {
+            mostrarEstado("Seleccione un predio de la tabla para editar sus datos.", "#f59e0b");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Editar Ficha del Predio");
+        dialog.setHeaderText("Modificar datos del predio: " + seleccionado.getCodigoCatastral());
+        configurarEstiloDialogo(dialog);
+
+        ButtonType btnGuardar = new ButtonType("💾 Guardar Cambios", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(btnGuardar, ButtonType.CANCEL);
+
+        VBox form = new VBox(12);
+        form.setPadding(new Insets(18));
+        form.setPrefWidth(440);
+
+        Label lblInfo = new Label("Código: " + seleccionado.getCodigoCatastral() +
+                " | Área: " + String.format("%.2f m²", seleccionado.getArea()) +
+                " | Estado: " + seleccionado.getEstado());
+        lblInfo.setStyle("-fx-text-fill: #94a3b8; -fx-font-weight: bold; -fx-font-size: 12px;");
+
+        Label lblNombre = new Label("Nombre o Denominación del Predio *:");
+        lblNombre.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        TextField txtNombre = new TextField(seleccionado.getNombre() != null ? seleccionado.getNombre() : "");
+        txtNombre.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
+
+        Label lblDir = new Label("Dirección Nomenclatura Urbana *:");
+        lblDir.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        TextField txtDir = new TextField(seleccionado.getDireccion() != null ? seleccionado.getDireccion() : "");
+        txtDir.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
+
+        Label lblUso = new Label("Destinación Económica / Uso del Suelo:");
+        lblUso.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        ComboBox<String> cmbUso = new ComboBox<>();
+        cmbUso.getItems().addAll("Residencial", "Comercial", "Industrial", "Institucional", "Mixto");
+        cmbUso.setValue(seleccionado.getUsoSuelo() != null ? seleccionado.getUsoSuelo() : "Residencial");
+        cmbUso.setMaxWidth(Double.MAX_VALUE);
+        cmbUso.setStyle("-fx-background-color: #1e293b; -fx-border-color: #334155; -fx-border-radius: 6;");
+
+        form.getChildren().addAll(lblInfo, new Separator(), lblNombre, txtNombre, lblDir, txtDir, lblUso, cmbUso);
+        dialog.getDialogPane().setContent(form);
+
+        Optional<ButtonType> res = dialog.showAndWait();
+        if (res.isPresent() && res.get() == btnGuardar) {
+            String nuevoNom = txtNombre.getText().trim();
+            String nuevaDir = txtDir.getText().trim();
+            String nuevoUso = cmbUso.getValue();
+
+            if (nuevoNom.isEmpty() || nuevaDir.isEmpty()) {
+                mostrarEstado("El nombre y la dirección son obligatorios.", "#ef4444");
+                return;
+            }
+
+            boolean exito = predioDAO.actualizarDatosPredio(seleccionado.getId(), nuevoNom, nuevaDir, nuevoUso, seleccionado.getObservaciones());
+            if (exito) {
+                cargarMisPredios();
+                mostrarEstado("✔ Predio " + seleccionado.getCodigoCatastral() + " actualizado correctamente.", "#22c55e");
+            } else {
+                mostrarEstado("Error al actualizar los datos en la base de datos.", "#ef4444");
+            }
+        }
+    }
+
+    private void configurarEstiloDialogo(Dialog<?> dialog) {
+        DialogPane pane = dialog.getDialogPane();
+        pane.setStyle("-fx-background-color: #0f172a;");
+        try {
+            String css = getClass().getResource("/styles/main.css").toExternalForm();
+            pane.getStylesheets().add(css);
+        } catch (Exception ignored) {}
+    }
+
+    private void mostrarEstado(String texto, String colorHex) {
+        if (lblEstadoPropietario != null) {
+            lblEstadoPropietario.setText(texto);
+            lblEstadoPropietario.setStyle("-fx-text-fill: " + colorHex + "; -fx-font-weight: bold;");
         }
     }
 

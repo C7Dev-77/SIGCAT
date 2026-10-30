@@ -324,3 +324,58 @@
     -fx-border-width: 1;
     -fx-border-radius: 6;
 }
+
+
+/* DIÁLOGOS Y VENTANAS MODALES (DARK THEME) */
+.dialog-pane {
+    -fx-background-color: #0f172a;
+    -fx-border-color: #334155;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.dialog-pane > .header-panel {
+    -fx-background-color: #1e293b;
+    -fx-padding: 14 18 14 18;
+}
+
+.dialog-pane > .header-panel .label {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.dialog-pane > .content {
+    -fx-background-color: #0f172a;
+    -fx-padding: 16 18 16 18;
+}
+
+.dialog-pane > .content .label {
+    -fx-text-fill: #cbd5e1;
+}
+
+.dialog-pane .button-bar .button {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #f1f5f9;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16 8 16;
+    -fx-background-radius: 6;
+    -fx-border-color: #475569;
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+}
+
+.dialog-pane .button-bar .button:default {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #3b82f6;
+}
+
+.dialog-pane .button-bar .button:hover {
+    -fx-background-color: #334155;
+}
+
+.dialog-pane .button-bar .button:default:hover {
+    -fx-background-color: #1d4ed8;
+}

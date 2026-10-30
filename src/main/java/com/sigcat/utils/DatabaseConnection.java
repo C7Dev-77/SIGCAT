@@ -80,6 +80,17 @@ public class DatabaseConnection {
     }
 
     /**
+     * Cierra y reinicia la conexión activa (útil para alternar a base de datos de test aislada).
+     */
+    public static synchronized void reiniciarConexion() throws SQLException {
+        if (instance != null && instance.connection != null && !instance.connection.isClosed()) {
+            instance.connection.close();
+            System.out.println("[DB] Conexión cerrada y reiniciada.");
+        }
+        instance = null;
+    }
+
+    /**
      * Cierra la conexión a la base de datos.
      */
     public void close() throws SQLException {

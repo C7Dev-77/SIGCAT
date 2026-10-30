@@ -32,6 +32,7 @@ public class Predio {
     private String usoSuelo;
     private String observaciones;
     private String fechaRevision;
+    private String nombrePropietario;
 
     public Predio() {
         this.fechaRegistro = LocalDate.now();
@@ -98,8 +99,11 @@ public class Predio {
     public String getFechaRevision() { return fechaRevision; }
     public void setFechaRevision(String fechaRevision) { this.fechaRevision = fechaRevision; }
 
+    public String getNombrePropietario() { return nombrePropietario; }
+    public void setNombrePropietario(String nombrePropietario) { this.nombrePropietario = nombrePropietario; }
+
     @Override
     public String toString() {
-        return "Predio{id=" + id + ", area=" + areaCalculada + ", estado=" + estado + "}";
+        return "Predio{id=" + id + ", codigo=" + codigoCatastral + ", nombre=" + nombre + ", area=" + areaCalculada + ", estado=" + estado + "}";
     }
 }

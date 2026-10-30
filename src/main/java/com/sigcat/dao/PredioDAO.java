@@ -93,6 +93,66 @@ public class PredioDAO {
         }
     }
 
+    public boolean actualizarDatosPredio(int predioId, String nombre, String direccion, String usoSuelo, String observaciones) {
+        String sql = "UPDATE predios SET nombre = ?, direccion = ?, uso_suelo = ?, observaciones = ? WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, nombre);
+            stmt.setString(2, direccion);
+            stmt.setString(3, usoSuelo);
+            stmt.setString(4, observaciones);
+            stmt.setInt(5, predioId);
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Error al actualizar datos de predio: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean eliminarPredio(int predioId) {
+        String sqlVertices = "DELETE FROM vertices WHERE id_predio = ?";
+        String sqlPredio = "DELETE FROM predios WHERE id = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement stmtV = conn.prepareStatement(sqlVertices)) {
+                stmtV.setInt(1, predioId);
+                stmtV.executeUpdate();
+            }
+
+            int filas;
+            try (PreparedStatement stmtP = conn.prepareStatement(sqlPredio)) {
+                stmtP.setInt(1, predioId);
+                filas = stmtP.executeUpdate();
+            }
+
+            conn.commit();
+            return filas > 0;
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            System.err.println("Error al eliminar predio: " + e.getMessage());
+            return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
     public List<Predio> obtenerPorPropietario(int propietarioId) {
         List<Predio> lista = new ArrayList<>();
         String sql = "SELECT * FROM predios WHERE propietario_id = ? ORDER BY id DESC";
@@ -114,10 +174,35 @@ public class PredioDAO {
         return lista;
     }
 
-    public List<Predio> obtenerPorEstado(String estado) {
+    public List<Predio> obtenerTodos() {
         List<Predio> lista = new ArrayList<>();
         String sql = "SELECT p.*, u.nombre AS nombre_propietario FROM predios p " +
-                     "LEFT JOIN usuarios u ON p.propietario_id = u.id " +
+                     "LEFT JOIN usuarios u ON p.propietario_id = u.id_usuario " +
+                     "ORDER BY p.id DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                Predio p = mapearPredio(rs);
+                p.setVertices(verticeDAO.obtenerPorPredio(p.getId()));
+                lista.add(p);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al listar todos los predios: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    public List<Predio> obtenerPorEstado(String estado) {
+        if (estado == null || estado.trim().isEmpty() || estado.toUpperCase().startsWith("TODO")) {
+            return obtenerTodos();
+        }
+
+        List<Predio> lista = new ArrayList<>();
+        String sql = "SELECT p.*, u.nombre AS nombre_propietario FROM predios p " +
+                     "LEFT JOIN usuarios u ON p.propietario_id = u.id_usuario " +
                      "WHERE UPPER(p.estado) = UPPER(?) ORDER BY p.id DESC";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -169,6 +254,10 @@ public class PredioDAO {
         p.setEstado(rs.getString("estado"));
         p.setPropietarioId(rs.getInt("propietario_id"));
         p.setObservaciones(rs.getString("observaciones"));
+        try {
+            String nom = rs.getString("nombre_propietario");
+            if (nom != null) p.setNombrePropietario(nom);
+        } catch (SQLException ignored) {}
         return p;
     }
 

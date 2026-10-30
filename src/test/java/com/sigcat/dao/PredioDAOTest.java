@@ -2,7 +2,9 @@ package com.sigcat.dao;
 
 import com.sigcat.models.Predio;
 import com.sigcat.models.Vertice;
+import com.sigcat.utils.DatabaseConnection;
 import com.sigcat.utils.DatabaseInitializer;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -19,11 +21,19 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class PredioDAOTest {
 
-    private static final PredioDAO predioDAO = new PredioDAO();
+    private static PredioDAO predioDAO;
 
     @BeforeAll
     static void inicializarBaseDeDatos() throws SQLException {
+        System.setProperty("sigcat.db", "target/sigcat_test.db");
+        DatabaseConnection.reiniciarConexion();
         DatabaseInitializer.initialize();
+        predioDAO = new PredioDAO();
+    }
+
+    @AfterAll
+    static void limpiarBaseDeDatos() throws SQLException {
+        DatabaseConnection.reiniciarConexion();
     }
 
     /**

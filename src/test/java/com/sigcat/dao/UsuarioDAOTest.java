@@ -1,9 +1,10 @@
 package com.sigcat.dao;
 
-import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.models.Usuario;
 import com.sigcat.security.PasswordUtil;
+import com.sigcat.utils.DatabaseConnection;
 import com.sigcat.utils.DatabaseInitializer;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -21,13 +22,19 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class UsuarioDAOTest {
 
-    private static final UsuarioDAO usuarioDAO = new UsuarioDAO();
+    private static UsuarioDAO usuarioDAO;
 
     @BeforeAll
     static void inicializarBaseDeDatos() throws SQLException {
-        // Garantiza que las tablas y los usuarios semilla (documento 1001 y 2002)
-        // existan antes de correr las pruebas. Es seguro llamarlo varias veces.
+        System.setProperty("sigcat.db", "target/sigcat_test.db");
+        DatabaseConnection.reiniciarConexion();
         DatabaseInitializer.initialize();
+        usuarioDAO = new UsuarioDAO();
+    }
+
+    @AfterAll
+    static void limpiarBaseDeDatos() throws SQLException {
+        DatabaseConnection.reiniciarConexion();
     }
 
     @Test

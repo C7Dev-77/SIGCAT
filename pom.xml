@@ -132,6 +132,10 @@
                 <version>3.3.0</version>
                 <configuration>
                     <useModulePath>false</useModulePath>
+                    <!-- Las pruebas automatizadas usan una base de datos de test aislada para no contaminar sigcat.db -->
+                    <systemPropertyVariables>
+                        <sigcat.db>target/sigcat_test.db</sigcat.db>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
 

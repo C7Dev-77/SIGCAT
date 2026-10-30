@@ -25,7 +25,7 @@
 
     <!-- CABECERA DEL FUNCIONARIO -->
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="20.0" styleClass="top-navbar">
+        <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="top-navbar">
             <padding>
                 <Insets bottom="14.0" left="24.0" right="24.0" top="14.0"/>
             </padding>
@@ -35,7 +35,9 @@
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
             <Button mnemonicParsing="false" onAction="#inspeccionarEnMapa" styleClass="btn-secondary" text="🗺️ Inspeccionar en Mapa"/>
-            <Button mnemonicParsing="false" onAction="#cargarSolicitudesPorFiltro" styleClass="btn-secondary" text="🔄 Actualizar Bandeja"/>
+            <Button mnemonicParsing="false" onAction="#editarPredioSeleccionado" styleClass="btn-secondary" text="✏️ Editar Datos"/>
+            <Button mnemonicParsing="false" onAction="#eliminarPredioSeleccionado" styleClass="btn-danger-outline" text="🗑️ Eliminar Solicitud"/>
+            <Button mnemonicParsing="false" onAction="#cargarSolicitudesPorFiltro" styleClass="btn-secondary" text="🔄 Actualizar"/>
             <Button mnemonicParsing="false" onAction="#cerrarSesion" styleClass="btn-outline" text="🚪 Cerrar Sesión"/>
         </HBox>
     </top>
@@ -63,18 +65,19 @@
 
                 <VBox alignment="CENTER_RIGHT" spacing="6.0">
                     <Label styleClass="field-label" text="Filtrar Bandeja por Estado:"/>
-                    <ComboBox fx:id="cmbFiltroEstado" prefWidth="220.0" styleClass="combo-input"/>
+                    <ComboBox fx:id="cmbFiltroEstado" prefWidth="260.0" styleClass="combo-input"/>
                 </VBox>
             </HBox>
 
             <!-- TABLA DE SOLICITUDES CATASTRALES -->
             <TableView fx:id="tablaSolicitudes" VBox.vgrow="ALWAYS" styleClass="modern-table">
                 <columns>
-                    <TableColumn fx:id="colCodigo" prefWidth="150.0" text="Código Catastral"/>
-                    <TableColumn fx:id="colNombre" prefWidth="260.0" text="Nombre del Predio"/>
-                    <TableColumn fx:id="colDireccion" prefWidth="320.0" text="Dirección / Sector"/>
-                    <TableColumn fx:id="colArea" prefWidth="150.0" text="Área Calculada (m²)"/>
-                    <TableColumn fx:id="colEstado" prefWidth="150.0" text="Estado Actual"/>
+                    <TableColumn fx:id="colCodigo" prefWidth="140.0" text="Código Catastral"/>
+                    <TableColumn fx:id="colNombre" prefWidth="230.0" text="Nombre del Predio"/>
+                    <TableColumn fx:id="colDireccion" prefWidth="260.0" text="Dirección / Sector"/>
+                    <TableColumn fx:id="colPropietario" prefWidth="170.0" text="Propietario"/>
+                    <TableColumn fx:id="colArea" prefWidth="130.0" text="Área Calculada (m²)"/>
+                    <TableColumn fx:id="colEstado" prefWidth="140.0" text="Estado Actual"/>
                 </columns>
                 <columnResizePolicy>
                     <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
@@ -93,15 +96,15 @@
             <HBox alignment="CENTER_LEFT" spacing="12.0">
                 <Label styleClass="section-header" text="Emisión de Dictamen Técnico Motivado"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Label fx:id="lblMensajeFeedback" text="Seleccione una solicitud de la tabla para auditar."/>
+                <Label fx:id="lblMensajeFeedback" text="Doble clic en una fila para auditar sobre el mapa de Sincelejo."/>
             </HBox>
 
             <HBox spacing="16.0" alignment="CENTER_LEFT">
-                <TextArea fx:id="txtObservacionesDictamen" prefHeight="76.0"
+                <TextArea fx:id="txtObservacionesDictamen" prefHeight="84.0"
                           promptText="Ingrese las observaciones técnicas, concepto jurídico o justificación obligatoria en caso de rechazo..."
                           styleClass="text-area-input" wrapText="true" HBox.hgrow="ALWAYS"/>
 
-                <VBox spacing="8.0" prefWidth="250.0">
+                <VBox spacing="8.0" prefWidth="260.0">
                     <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false"
                             onAction="#inspeccionarEnMapa" styleClass="btn-secondary" text="🗺️ Inspeccionar en Mapa"/>
                     <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false"

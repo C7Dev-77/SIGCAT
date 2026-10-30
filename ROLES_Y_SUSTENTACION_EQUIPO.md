@@ -7,13 +7,6 @@
 
 ---
 
-> 📌 **¿Cómo usar este documento?**  
-> Este documento está diseñado para preparar la sustentación del proyecto frente al profesor. Para cada uno de los 5 integrantes encontrarás:
-> 1. **Ficha Técnica y Profesional:** Para el informe escrito, memoria técnica o preguntas profundas de código.
-> 2. **Guion de Sustentación Oral (Primera Persona):** Texto en lenguaje claro, natural y seguro para hablar frente al docente sin trabarse ni memorizar tecnicismos innecesarios.
-
----
-
 ## 1. 🏗️ Cristian Morales — Arquitecto de Software y Coordinador Técnico
 
 ### 📋 Aporte Técnico y Profesional (Informe / Memoria)
@@ -161,3 +154,4 @@ flowchart LR
 5. **Paso 5 (Radicación):** Guardar el predio con nombre y dirección. Volver a "Mis Predios" y ver cómo aparece en estado `PENDIENTE` en color naranja.
 6. **Paso 6 (Funcionario y Dictamen):** Iniciar sesión en la otra ventana o equipo como Funcionario (`1001` / `123`). Ver la solicitud en la bandeja, pulsar *"🗺️ Inspeccionar en Mapa"* o hacer doble clic para ver cómo el visor vuela automáticamente a centrarse en el terreno en la Universidad. Escribir el dictamen y dar clic en *"Aprobar Predio"*.
 7. **Paso 7 (Sincronización):** Regresar a la vista del propietario: en menos de 4 segundos la tabla se auto-refresca sola mostrando el lote en verde con estado `APROBADO` y el mensaje oficial del funcionario.
+
