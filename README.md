@@ -12,10 +12,10 @@
 | Miembro | Rol | Responsabilidades Principales |
 | ------- | --- | ----------------------------- |
 | **Cristian Morales** | Arquitecto de Software | Arquitectura del sistema, concurrencia multi-PC, seguridad BCrypt, ViewNavigator y empaquetado Fat JAR |
-| **Andrés Diaz** | Desarrollador Core | Motor topológico, cálculo de Shoelace en metros reales ($m^2$), validación de solapamiento y lógica de funcionario |
+| **Andrés Diaz** | Desarrollador Core | Motor topológico, cálculo de Shoelace en metros reales ($m^2$), validación de solapamiento y resolución de conflictos |
 | **Leider Barreto** | Desarrollador UI/UX | Vistas FXML, diseño visual en CSS, integración del motor OpenStreetMap en Canvas y experiencia de usuario |
-| **Aldo Ibañez** | Desarrollador de Persistencia | Esquema relacional SQLite, transacciones ACID con `PredioDAO` y consultas de la malla catastral |
-| **José Sánchez** | Analista de Calidad (QA) | Automatización de pruebas unitarias e integración con JUnit 5 (25 pruebas operativas al 100%) |
+| **Aldo Ibañez** | Desarrollador de Persistencia | Esquema relacional SQLite, transacciones ACID con `PredioDAO`, borrado en cascada y consultas de malla |
+| **José Sánchez** | Analista de Calidad (QA) | Automatización de pruebas unitarias e integración con JUnit 5 (26 pruebas operativas al 100%) |
 
 ---
 
@@ -38,11 +38,15 @@
 ### 2. 🏠 Portal del Propietario ("Mis Predios")
 - **Dashboard de Control:** Cuatro tarjetas métricas (KPIs) en tiempo real: *Total Radicados*, *Aprobados*, *En Revisión (Pendientes)* y *Rechazados*.
 - **Tabla Catastral Dinámica:** Visualización con semáforo de colores por estado y dictámenes técnicos emitidos por los funcionarios.
+- **Edición y Eliminación de Solicitudes:** Funcionalidad para actualizar datos del predio (nombre, dirección, uso de suelo) o retirar solicitudes no aprobadas con confirmación modal.
 - **Inspección en Mapa con Doble Clic:** Botón *"🗺️ Ver en Mapa"* y soporte de doble clic en cualquier fila para ubicar inmediatamente el predio sobre la cartografía de Sincelejo.
 - **Sincronización Silenciosa:** Sondeo periódico en segundo plano que actualiza el estado de las solicitudes en vivo sin parpadeos visuales.
 
 ### 3. 🏛️ Consola de Auditoría del Funcionario
-- **Bandeja de Entrada con Filtro Reactivo:** Filtrado instantáneo por estado de trámite (`PENDIENTE`, `APROBADO`, `RECHAZADO`).
+- **Bandeja de Entrada Multicriterio:** Filtrado reactivo e instantáneo (`TODAS LAS SOLICITUDES`, `PENDIENTE`, `APROBADO`, `RECHAZADO`).
+- **Validación Topológica Previa a la Aprobación:** Bloqueo preventivo automático si el lote a aprobar invade o solapa un predio ya incorporado a la malla catastral oficial de Sincelejo.
+- **Resolución Automática de Conflictos Catastrales:** Si se aprueba una solicitud legítima, el sistema detecta y rechaza automáticamente (con dictamen técnico motivado) todas las demás solicitudes pendientes que colisionen sobre ese mismo terreno.
+- **Edición y Depuración:** Opciones para rectificar información de expedientes o depurar solicitudes erróneas con borrado en cascada de vértices.
 - **Auditoría Cartográfica Visual:** Inspección del lote trazado sobre la malla urbana oficial mediante botón dedicado o doble clic en la tabla.
 - **Dictamen Técnico Vinculante:** Emisión de dictamen con observaciones; justificación técnica obligatoria en caso de rechazo y aprobación con un solo clic.
 - **Sincronización Multi-PC:** Refresco automático concurrente para auditoría colaborativa entre varias terminales conectadas en red local.
@@ -62,7 +66,7 @@
 ### 5. 📐 Motor Topológico y Métricas Geométricas
 - **Cálculo Métrico en Superficie Real ($m^2$ y $m$):** Algoritmo de Gauss / Shoelace con proyección equirectangular local adaptada a la latitud de Sincelejo ($\approx 109.8 \text{ km/grado lon}$ y $111.3 \text{ km/grado lat}$), garantizando áreas y perímetros en metros reales.
 - **Validación de Autointersecciones:** Detección en vivo de polígonos complejos o con cruce de aristas antes de permitir el envío.
-- **Detección Preventiva de Solapamientos:** Análisis espacial (Bounding Box + Ray-Casting) contra los predios aprobados en la malla catastral oficial.
+- **Detección Preventiva de Solapamientos:** Análisis espacial (Bounding Box + JTS Ray-Casting) contra los predios aprobados en la malla catastral oficial.
 
 ### 6. 💾 Persistencia Concurrente SQLite
 - **Arquitectura Transaccional ACID:** Inserción atómica de predios y sus lotes de vértices mediante `PredioDAO` y `VerticeDAO`.
@@ -99,8 +103,8 @@ SIGCAT/
     │   │   ├── controllers/
     │   │   │   ├── LoginController.java      # Inicio de sesión y navegación por rol
     │   │   │   ├── RegistroController.java   # Autoregistro de propietarios con BCrypt
-    │   │   │   ├── MenuPropietarioController.java # Dashboard del propietario e historial
-    │   │   │   ├── MenuFuncionarioController.java # Consola de auditoría y dictamen técnico
+    │   │   │   ├── MenuPropietarioController.java # Dashboard del propietario, CRUD e historial
+    │   │   │   ├── MenuFuncionarioController.java # Consola de auditoría, dictamen técnico y resolución
     │   │   │   ├── DibujoController.java     # Motor de dibujo, visor OSM y validación en vivo
     │   │   │   └── SolicitudRow.java         # DTO para filas de solicitud
     │   │   ├── dao/
@@ -125,7 +129,7 @@ SIGCAT/
     │       ├── fxml/
     │       │   ├── login.fxml                # Vista de autenticación institucional
     │       │   ├── registro.fxml             # Vista de registro de propietarios
-    │       │   ├── menu-propietario.fxml     # Dashboard y tabla "Mis Predios"
+    │       │   ├── menu-propietario.fxml     # Dashboard y tabla "Mis Predios" (con editar/eliminar)
     │       │   ├── menu-funcionario.fxml     # Bandeja de revisión y dictamen técnico
     │       │   └── dibujo.fxml               # Visor cartográfico interactivo de Sincelejo
     │       └── styles/
@@ -133,7 +137,7 @@ SIGCAT/
     └── test/
         └── java/com/sigcat/
             ├── dao/
-            │   ├── PredioDAOTest.java        # Pruebas de persistencia transaccional (4 tests)
+            │   ├── PredioDAOTest.java        # Pruebas de persistencia transaccional y filtros (5 tests)
             │   └── UsuarioDAOTest.java       # Pruebas de autenticación y seguridad (10 tests)
             ├── geometry/
             │   ├── ShoelaceCalculatorTest.java # Pruebas de área y perímetro (4 tests)
@@ -151,7 +155,7 @@ SIGCAT/
 - **Acceso a Internet:** Para la descarga inicial de librerías y teselas cartográficas de OpenStreetMap.
 
 ### 1. Ejecutar las Pruebas Automatizadas
-Para verificar la suite completa de 25 pruebas unitarias e integrales:
+Para verificar la suite completa de 26 pruebas unitarias e integrales:
 ```powershell
 .\mvnw.cmd test
 ```
@@ -179,6 +183,6 @@ java -Dsigcat.db="\\IP_DEL_SERVIDOR\carpeta_compartida\sigcat.db" -jar target\SI
 
 ## 🧪 Estado de Calidad del Software
 
-- **Suite de Pruebas:** 25 de 25 pruebas unitarias e integrales en verde (`BUILD SUCCESS`).
+- **Suite de Pruebas:** 26 de 26 pruebas unitarias e integrales en verde (`BUILD SUCCESS`).
 - **Validación Concurrente:** Pruebas de acceso concurrente y manejo de transacciones en SQLite.
 - **Diseño Ergonómico:** Ventana maximizada por defecto y preservación continua del estado visual sin saltos de resolución.
