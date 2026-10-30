@@ -1,6 +1,8 @@
 package com.sigcat.controllers;
 
 import com.sigcat.dao.PredioDAO;
+import com.sigcat.dao.VerticeDAO;
+import com.sigcat.geometry.SolapamientoValidator;
 import com.sigcat.models.Predio;
 import com.sigcat.models.Usuario;
 import com.sigcat.utils.ViewNavigator;
@@ -47,6 +49,7 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
     @FXML private ComboBox<String> cmbFiltroEstado;
 
     private final PredioDAO predioDAO = new PredioDAO();
+    private final VerticeDAO verticeDAO = new VerticeDAO();
     private final ObservableList<Predio> listaObservable = FXCollections.observableArrayList();
     private Usuario funcionario;
     private Timeline timerAutoRefresco;
@@ -220,11 +223,63 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
             obs = "Aprobado conforme a validación geométrica y normativa catastral de Sincelejo.";
         }
 
+        // Cargar vértices del predio seleccionado si aún no se han poblado
+        if (seleccionado.getVertices() == null || seleccionado.getVertices().isEmpty()) {
+            try {
+                seleccionado.setVertices(verticeDAO.obtenerPorPredio(seleccionado.getId()));
+            } catch (Exception e) {
+                System.err.println("Error al cargar vértices para dictamen: " + e.getMessage());
+            }
+        }
+
+        // 1. VALIDACIÓN TOPOLÓGICA PREVIA A LA APROBACIÓN
+        if ("APROBADO".equals(nuevoEstado)) {
+            List<Predio> mallaOficial = predioDAO.obtenerPrediosParaValidacionTopologica();
+            for (Predio oficial : mallaOficial) {
+                if (oficial.getId() == seleccionado.getId()) continue;
+                if (seleccionado.getVertices() != null && oficial.getVertices() != null &&
+                    SolapamientoValidator.PoligonosSeSolapan(seleccionado.getVertices(), oficial.getVertices())) {
+                    mostrarFeedback("❌ ACCIÓN BLOQUEADA: No se puede aprobar porque invade el predio oficial " +
+                            oficial.getCodigoCatastral() + " (" + (oficial.getNombre() != null ? oficial.getNombre() : "Lote") + ").", "#dc2626");
+                    return;
+                }
+            }
+        }
+
         boolean exito = predioDAO.actualizarEstado(seleccionado.getId(), nuevoEstado, obs);
         if (exito) {
             if (txtObservacionesDictamen != null) txtObservacionesDictamen.clear();
+
+            // 2. RESOLUCIÓN DE CONFLICTOS: Rechazo automático de solicitudes pendientes que queden invadidas
+            int autoRechazados = 0;
+            if ("APROBADO".equals(nuevoEstado) && seleccionado.getVertices() != null && !seleccionado.getVertices().isEmpty()) {
+                List<Predio> pendientes = predioDAO.obtenerPorEstado("PENDIENTE");
+                for (Predio pend : pendientes) {
+                    if (pend.getId() == seleccionado.getId()) continue;
+                    if (pend.getVertices() == null || pend.getVertices().isEmpty()) {
+                        try {
+                            pend.setVertices(verticeDAO.obtenerPorPredio(pend.getId()));
+                        } catch (Exception ignored) {}
+                    }
+                    if (pend.getVertices() != null && pend.getVertices().size() >= 3) {
+                        if (SolapamientoValidator.PoligonosSeSolapan(seleccionado.getVertices(), pend.getVertices())) {
+                            String motivo = "Rechazado automáticamente por conflicto catastral: El terreno fue adjudicado e incorporado bajo el código " +
+                                    seleccionado.getCodigoCatastral() + " (" + (seleccionado.getNombre() != null ? seleccionado.getNombre() : "Predio") + ").";
+                            predioDAO.actualizarEstado(pend.getId(), "RECHAZADO", motivo);
+                            autoRechazados++;
+                        }
+                    }
+                }
+            }
+
             cargarSolicitudesPorFiltro();
-            mostrarFeedback("✔ Predio " + seleccionado.getCodigoCatastral() + " marcado como " + nuevoEstado, "#16a34a");
+
+            if (autoRechazados > 0) {
+                mostrarFeedback("✔ Predio " + seleccionado.getCodigoCatastral() + " APROBADO. Se rechazaron automáticamente " +
+                        autoRechazados + " solicitudes pendientes en conflicto con este terreno.", "#16a34a");
+            } else {
+                mostrarFeedback("✔ Predio " + seleccionado.getCodigoCatastral() + " marcado como " + nuevoEstado, "#16a34a");
+            }
         } else {
             mostrarFeedback("Error al actualizar el estado en la base de datos.", "#dc2626");
         }
