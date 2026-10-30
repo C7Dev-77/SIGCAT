@@ -3,470 +3,621 @@ package com.sigcat.controllers;
 import com.sigcat.dao.PredioDAO;
 import com.sigcat.geometry.ShoelaceCalculator;
 import com.sigcat.geometry.SolapamientoValidator;
-import com.sigcat.geometry.VerticeAdapter;
 import com.sigcat.models.Predio;
 import com.sigcat.models.Usuario;
 import com.sigcat.models.Vertice;
-import javafx.beans.property.ReadOnlyObjectWrapper;
-import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
-import javafx.collections.ObservableList;
-import javafx.concurrent.Task;
+import com.sigcat.utils.OsmTileManager;
+import com.sigcat.utils.ViewNavigator;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.fxml.Initializable;
-import javafx.geometry.Point2D;
+import javafx.scene.Cursor;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TableCell;
-import javafx.scene.control.TableColumn;
-import javafx.scene.control.TableView;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.StackPane;
+import javafx.scene.input.ScrollEvent;
+import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Polygon;
 
 import java.io.IOException;
-import java.net.URL;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.ResourceBundle;
+import java.util.UUID;
 
 /**
- * Controlador de la pantalla de dibujo de predios (estilo GIS).
- * Los vértices se pueden agregar con clic en el lienzo o escribiendo X e Y.
- * El área se calcula en vivo y el predio se guarda al pulsar "Validar y Enviar".
- *
- * Responsables: Leider Barreto (UI/UX) y Andrés Diaz (lógica de validación)
+ * Controlador JavaFX para el levantamiento catastral sobre cartografía de Sincelejo, Sucre.
+ * Renderiza OpenStreetMap en Java puro, valida solapamientos en tiempo real y calcula áreas con Shoelace.
  */
-public class DibujoController implements Initializable {
+public class DibujoController {
 
-    private static final double RADIO_NODO = 5.0;
-    private static final double TAM_CUADRICULA = 40.0;
-    private static final double ZOOM_MIN = 0.4;
-    private static final double ZOOM_MAX = 4.0;
-    private static final double ZOOM_PASO = 1.25;
+    @FXML private Canvas mapaCanvas;
+    @FXML private TextField txtNombrePredio;
+    @FXML private TextField txtDireccion;
+    @FXML private ComboBox<String> cmbUsoSuelo;
+    @FXML private ComboBox<String> cmbSectorSincelejo; // Opcional en FXML para saltar entre barrios de Sincelejo
+    @FXML private Label lblAreaCalculada;
+    @FXML private Label lblPerimetroCalculado;
+    @FXML private Label lblCantidadVertices;
+    @FXML private Label lblEstadoValidacion;
+    @FXML private Button btnGuardarPredio;
 
-    private static final Color AZUL = Color.web("#3b82f6");
-    private static final Color ROJO = Color.web("#ef4444");
-    private static final Color VERDE = Color.web("#22c55e");
-    private static final Color AMBAR = Color.web("#f59e0b");
+    private final List<Vertice> verticesActuales = new ArrayList<>();
+    private List<Predio> prediosExistentes = new ArrayList<>();
+    private final PredioDAO predioDAO = new PredioDAO();
+    private int propietarioActualId = 1;
+    private Usuario usuarioActual;
 
-    private static final String ESTILO_NEUTRO = "-fx-text-fill: #94a3b8;";
-    private static final String ESTILO_ERROR = "-fx-text-fill: #ef4444; -fx-font-weight: bold;";
-    private static final String ESTILO_OK = "-fx-text-fill: #22c55e; -fx-font-weight: bold;";
+    // Motor de OpenStreetMap centrado por defecto en Sincelejo, Sucre, Colombia
+    private OsmTileManager osmTileManager;
+    private boolean mostrarMapaSatelitalOSM = true;
+    private double lastMouseX;
+    private double lastMouseY;
+    private double pressStartX;
+    private double pressStartY;
+    // Flag para distinguir arrastre (pan) de clic simple (vértice)
+    private boolean isDragging = false;
+    private static final double DRAG_THRESHOLD = 5.0;
 
-    @FXML private Canvas canvasDibujo;
-    @FXML private StackPane contenedorCanvas;
-    @FXML private TextField txtX;
-    @FXML private TextField txtY;
-    @FXML private TableView<Point2D> tablaVertices;
-    @FXML private TableColumn<Point2D, String> colPunto;
-    @FXML private TableColumn<Point2D, Double> colX;
-    @FXML private TableColumn<Point2D, Double> colY;
-    @FXML private Label lblUsuario;
-    @FXML private Label lblIniciales;
-    @FXML private Label lblArea;
-    @FXML private Label lblEstado;
-    @FXML private Button btnEnviar;
+    @FXML
+    public void initialize() {
+        if (cmbUsoSuelo != null) {
+            cmbUsoSuelo.getItems().addAll("Residencial", "Comercial", "Industrial", "Institucional", "Mixto");
+            cmbUsoSuelo.getSelectionModel().selectFirst();
+        }
 
-    private final ObservableList<Point2D> vertices = FXCollections.observableArrayList();
-    private List<Polygon> prediosAprobados = new ArrayList<>();
-    private Usuario propietario;
+        // Inicializar motor OSM centrado en Sincelejo (9.30472, -75.39778)
+        osmTileManager = new OsmTileManager(this::redibujarMapa);
+        osmTileManager.centrarEnSincelejo();
 
-    private double escala = 1.0;
-    private boolean enviado = false;
-    private Color colorBorde = AZUL;
+        if (cmbSectorSincelejo != null) {
+            cmbSectorSincelejo.getItems().addAll(
+                    "Centro Histórico (Parque Santander)",
+                    "Sector Norte (Unisucre / Puerta Roja)",
+                    "Sector Venecia / Las Mercedes",
+                    "Sector Majagual / Pozo de Majagual",
+                    "Vista General Urbana Sincelejo"
+            );
+            cmbSectorSincelejo.getSelectionModel().selectFirst();
+            cmbSectorSincelejo.setOnAction(e -> osmTileManager.irASectorSincelejo(cmbSectorSincelejo.getValue()));
+        }
 
-    @Override
-    public void initialize(URL location, ResourceBundle resources) {
-        tablaVertices.setItems(vertices);
+        cargarMallaCatastral();
+        configurarEventosCanvas();
+        actualizarMetricasYValidacion();
+        redibujarMapa();
 
-        Label vacio = new Label("Aún no hay vértices");
-        vacio.setStyle("-fx-text-fill: #64748b;");
-        tablaVertices.setPlaceholder(vacio);
-
-        colPunto.setCellValueFactory(cd -> new ReadOnlyObjectWrapper<>(""));
-        colPunto.setCellFactory(col -> new TableCell<>() {
-            @Override
-            protected void updateItem(String item, boolean empty) {
-                super.updateItem(item, empty);
-                setText(empty ? null : "P" + (getIndex() + 1));
+        // Ajuste dinámico de dimensiones de Canvas al contenedor al redimensionar o maximizar
+        Platform.runLater(() -> {
+            if (mapaCanvas != null && mapaCanvas.getParent() instanceof Pane parentPane) {
+                parentPane.widthProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal.doubleValue() > 100) {
+                        mapaCanvas.setWidth(newVal.doubleValue());
+                        redibujarMapa();
+                    }
+                });
+                parentPane.heightProperty().addListener((obs, oldVal, newVal) -> {
+                    if (newVal.doubleValue() > 100) {
+                        mapaCanvas.setHeight(newVal.doubleValue());
+                        redibujarMapa();
+                    }
+                });
+                if (parentPane.getWidth() > 100) mapaCanvas.setWidth(parentPane.getWidth());
+                if (parentPane.getHeight() > 100) mapaCanvas.setHeight(parentPane.getHeight());
+                redibujarMapa();
             }
         });
-        colX.setCellValueFactory(cd -> new ReadOnlyObjectWrapper<>(cd.getValue().getX()));
-        colY.setCellValueFactory(cd -> new ReadOnlyObjectWrapper<>(cd.getValue().getY()));
-        colX.setCellFactory(col -> celdaNumerica());
-        colY.setCellFactory(col -> celdaNumerica());
-
-        // El lienzo ocupa todo el espacio del centro
-        canvasDibujo.widthProperty().bind(contenedorCanvas.widthProperty());
-        canvasDibujo.heightProperty().bind(contenedorCanvas.heightProperty());
-        canvasDibujo.widthProperty().addListener((o, a, b) -> redibujar());
-        canvasDibujo.heightProperty().addListener((o, a, b) -> redibujar());
-
-        vertices.addListener((ListChangeListener<Point2D>) c -> actualizarVertices());
-
-        txtX.setOnAction(e -> txtY.requestFocus());
-        txtY.setOnAction(e -> handleAnadirVertice());
-
-        contenedorCanvas.setOnScroll(e -> {
-            if (e.getDeltaY() > 0) {
-                handleZoomIn();
-            } else if (e.getDeltaY() < 0) {
-                handleZoomOut();
-            }
-        });
-
-        actualizarVertices();
     }
 
-    private TableCell<Point2D, Double> celdaNumerica() {
-        return new TableCell<>() {
-            @Override
-            protected void updateItem(Double valor, boolean empty) {
-                super.updateItem(valor, empty);
-                setText(empty || valor == null ? null : String.format("%.1f", valor));
+    private boolean modoAuditor = false;
+    private Predio predioEnAuditoria;
+
+    public void activarModoInspeccionFuncionario(Predio predio, Usuario funcionario) {
+        this.modoAuditor = true;
+        this.usuarioActual = funcionario;
+        this.predioEnAuditoria = predio;
+
+        if (predio != null) {
+            if (txtNombrePredio != null) {
+                txtNombrePredio.setText(predio.getNombre() != null ? predio.getNombre() : "");
+                txtNombrePredio.setDisable(true);
             }
-        };
+            if (txtDireccion != null) {
+                txtDireccion.setText(predio.getDireccion() != null ? predio.getDireccion() : "");
+                txtDireccion.setDisable(true);
+            }
+            if (cmbUsoSuelo != null && predio.getUsoSuelo() != null) {
+                cmbUsoSuelo.setValue(predio.getUsoSuelo());
+                cmbUsoSuelo.setDisable(true);
+            }
+            if (btnGuardarPredio != null) {
+                btnGuardarPredio.setVisible(false);
+                btnGuardarPredio.setManaged(false);
+            }
+
+            if (predio.getVertices() != null && !predio.getVertices().isEmpty()) {
+                verticesActuales.clear();
+                verticesActuales.addAll(predio.getVertices());
+
+                // Si son coordenadas geográficas, centrar automáticamente el mapa sobre el predio
+                if (esCoordenadaGeografica(predio.getVertices().get(0))) {
+                    double avgLon = predio.getVertices().stream().mapToDouble(Vertice::getX).average().orElse(osmTileManager.getCenterLon());
+                    double avgLat = predio.getVertices().stream().mapToDouble(Vertice::getY).average().orElse(osmTileManager.getCenterLat());
+                    osmTileManager.setCoordenadasCentro(avgLat, avgLon, 17);
+                }
+            }
+
+            mostrarMensajeEstado("AUDITORÍA DE PREDIO: " + predio.getCodigoCatastral() + " (" + predio.getEstado() + ")", "#3b82f6");
+        } else {
+            mostrarMensajeEstado("VISOR CARTOGRÁFICO: Malla oficial de Sincelejo (Modo Consulta)", "#3b82f6");
+            if (btnGuardarPredio != null) {
+                btnGuardarPredio.setVisible(false);
+                btnGuardarPredio.setManaged(false);
+            }
+        }
+        actualizarMetricasYValidacion();
+        redibujarMapa();
     }
 
-    // ─── Datos que llegan desde otras pantallas ────────────────────────────
+    public void activarModoInspeccionPropietario(Predio predio, Usuario propietario) {
+        this.modoAuditor = true;
+        this.usuarioActual = propietario;
+        this.propietarioActualId = propietario != null ? propietario.getId() : (predio != null ? predio.getPropietarioId() : 1);
+        this.predioEnAuditoria = predio;
 
-    /** Inyecta el propietario autenticado (llamado desde MenuPropietarioController). */
-    public void setPropietario(Usuario propietario) {
-        this.propietario = propietario;
-        if (propietario != null) {
-            lblUsuario.setText(propietario.getNombre());
-            lblIniciales.setText(iniciales(propietario.getNombre()));
+        if (predio != null) {
+            if (txtNombrePredio != null) {
+                txtNombrePredio.setText(predio.getNombre() != null ? predio.getNombre() : "");
+                txtNombrePredio.setDisable(true);
+            }
+            if (txtDireccion != null) {
+                txtDireccion.setText(predio.getDireccion() != null ? predio.getDireccion() : "");
+                txtDireccion.setDisable(true);
+            }
+            if (cmbUsoSuelo != null && predio.getUsoSuelo() != null) {
+                cmbUsoSuelo.setValue(predio.getUsoSuelo());
+                cmbUsoSuelo.setDisable(true);
+            }
+            if (btnGuardarPredio != null) {
+                btnGuardarPredio.setVisible(false);
+                btnGuardarPredio.setManaged(false);
+            }
+
+            if (predio.getVertices() != null && !predio.getVertices().isEmpty()) {
+                verticesActuales.clear();
+                verticesActuales.addAll(predio.getVertices());
+
+                // Si son coordenadas geográficas, centrar automáticamente el mapa sobre el predio
+                if (esCoordenadaGeografica(predio.getVertices().get(0))) {
+                    double avgLon = predio.getVertices().stream().mapToDouble(Vertice::getX).average().orElse(osmTileManager.getCenterLon());
+                    double avgLat = predio.getVertices().stream().mapToDouble(Vertice::getY).average().orElse(osmTileManager.getCenterLat());
+                    osmTileManager.setCoordenadasCentro(avgLat, avgLon, 17);
+                }
+            }
+
+            String color = "#16a34a";
+            if ("PENDIENTE".equalsIgnoreCase(predio.getEstado())) color = "#d97706";
+            if ("RECHAZADO".equalsIgnoreCase(predio.getEstado())) color = "#dc2626";
+
+            mostrarMensajeEstado("PREDIO: " + predio.getCodigoCatastral() + " (" + predio.getEstado() + ") — Sincelejo", color);
+        }
+        actualizarMetricasYValidacion();
+        redibujarMapa();
+    }
+
+    public void setPropietarioActualId(int propietarioId) {
+        this.propietarioActualId = propietarioId;
+    }
+
+    public void setUsuarioActual(Usuario usuario) {
+        this.usuarioActual = usuario;
+        if (usuario != null) {
+            this.propietarioActualId = usuario.getId();
         }
     }
 
-    public Usuario getPropietario() {
-        return propietario;
+    public void setPropietario(Usuario usuario) {
+        setUsuarioActual(usuario);
     }
 
-    /** Inyecta los predios aprobados (se dibujan punteados y se usan para validar solapamiento). */
-    public void setPrediosAprobados(List<Polygon> prediosAprobados) {
-        this.prediosAprobados = prediosAprobados;
-        redibujar();
+    public void setPrediosAprobados(List<?> poligonos) {
+        // En el nuevo motor la malla catastral se carga automáticamente desde predioDAO.obtenerPrediosParaValidacionTopologica()
     }
 
-    private String iniciales(String nombre) {
-        StringBuilder sb = new StringBuilder();
-        for (String parte : nombre.trim().split("\\s+")) {
-            if (parte.isEmpty() || parte.startsWith("(")) {
+    private void cargarMallaCatastral() {
+        prediosExistentes = predioDAO.obtenerPrediosParaValidacionTopologica();
+    }
+
+    private boolean esCoordenadaGeografica(Vertice v) {
+        if (v == null) return false;
+        // En Colombia / Sincelejo: Longitud aprox -75.4 (entre -85 y -65), Latitud aprox 9.3 (entre 0 y 15)
+        return (v.getX() >= -180.0 && v.getX() <= 180.0 && v.getY() >= -90.0 && v.getY() <= 90.0);
+    }
+
+    private List<Vertice> convertirAVerticesMetros(List<Vertice> lista) {
+        if (lista == null || lista.isEmpty()) return lista;
+        if (!esCoordenadaGeografica(lista.get(0))) {
+            return lista; // Ya eran píxeles o metros locales
+        }
+
+        double refLon = lista.get(0).getX();
+        double refLat = lista.get(0).getY();
+        double metersPerDegLat = 111320.0;
+        double metersPerDegLon = 111320.0 * Math.cos(Math.toRadians(refLat));
+
+        List<Vertice> metros = new ArrayList<>();
+        for (int i = 0; i < lista.size(); i++) {
+            Vertice v = lista.get(i);
+            double mx = (v.getX() - refLon) * metersPerDegLon;
+            double my = (v.getY() - refLat) * metersPerDegLat;
+            metros.add(new Vertice(mx, my, v.getOrden()));
+        }
+        return metros;
+    }
+
+    private void configurarEventosCanvas() {
+        if (mapaCanvas == null) return;
+
+        mapaCanvas.setCursor(Cursor.CROSSHAIR);
+
+        // Al presionar: guardar posición inicial exacta y resetear flag de arrastre
+        mapaCanvas.setOnMousePressed((MouseEvent event) -> {
+            lastMouseX = event.getX();
+            lastMouseY = event.getY();
+            pressStartX = event.getX();
+            pressStartY = event.getY();
+            isDragging = false;
+        });
+
+        // Al arrastrar (con clic presionado): desplazamiento panorámico fluido del mapa (Pan)
+        mapaCanvas.setOnMouseDragged((MouseEvent event) -> {
+            double dx = event.getX() - lastMouseX;
+            double dy = event.getY() - lastMouseY;
+            double distTotal = Math.hypot(event.getX() - pressStartX, event.getY() - pressStartY);
+
+            if (distTotal > DRAG_THRESHOLD) {
+                isDragging = true;
+                mapaCanvas.setCursor(Cursor.CLOSED_HAND);
+            }
+
+            osmTileManager.desplazarMapa(dx, dy);
+
+            lastMouseX = event.getX();
+            lastMouseY = event.getY();
+            redibujarMapa();
+        });
+
+        // Al soltar el mouse: restaurar cursor de precisión
+        mapaCanvas.setOnMouseReleased((MouseEvent event) -> {
+            mapaCanvas.setCursor(Cursor.CROSSHAIR);
+        });
+
+        // Al hacer clic puntual (sin arrastrar): trazar vértice georreferenciado
+        mapaCanvas.setOnMouseClicked((MouseEvent event) -> {
+            if (modoAuditor) {
+                return; // En modo auditoría del funcionario solo se inspecciona y navega
+            }
+            if (event.getButton() == MouseButton.PRIMARY && !isDragging) {
+                double sx = event.getX();
+                double sy = event.getY();
+                double w = mapaCanvas.getWidth();
+                double h = mapaCanvas.getHeight();
+
+                double[] geo = osmTileManager.screenPixelToGeo(sx, sy, w, h);
+                double lon = geo[0];
+                double lat = geo[1];
+
+                Vertice nuevoVertice = new Vertice(lon, lat, verticesActuales.size() + 1);
+                verticesActuales.add(nuevoVertice);
+
+                actualizarMetricasYValidacion();
+                redibujarMapa();
+            }
+            isDragging = false;
+        });
+
+        // Navegación con Scroll: Zoom In / Zoom Out centrado en el mapa
+        mapaCanvas.setOnScroll((ScrollEvent event) -> {
+            int delta = event.getDeltaY() > 0 ? 1 : -1;
+            osmTileManager.cambiarZoom(delta);
+            actualizarMetricasYValidacion();
+            redibujarMapa();
+            event.consume();
+        });
+    }
+
+    @FXML
+    public void centrarMapaEnSincelejo() {
+        if (osmTileManager != null) {
+            osmTileManager.centrarEnSincelejo();
+        }
+    }
+
+    private void actualizarMetricasYValidacion() {
+        int n = verticesActuales.size();
+        if (lblCantidadVertices != null) {
+            lblCantidadVertices.setText(String.valueOf(n));
+        }
+
+        if (n < 3) {
+            if (lblAreaCalculada != null) lblAreaCalculada.setText("0.00 m²");
+            if (lblPerimetroCalculado != null) lblPerimetroCalculado.setText("0.00 m");
+            if (!modoAuditor) {
+                mostrarMensajeEstado("Sincelejo, Sucre | Arrastrar: Mover mapa | Scroll: Zoom | Clic: Trazar vértice (mín. 3)", "#64748b");
+                if (btnGuardarPredio != null) btnGuardarPredio.setDisable(true);
+            }
+            return;
+        }
+
+        List<Vertice> verticesParaCalculo = convertirAVerticesMetros(verticesActuales);
+        double area = ShoelaceCalculator.calcularArea(verticesParaCalculo);
+        double perimetro = ShoelaceCalculator.calcularPerimetro(verticesParaCalculo);
+
+        if (lblAreaCalculada != null) lblAreaCalculada.setText(String.format("%.2f m²", area));
+        if (lblPerimetroCalculado != null) lblPerimetroCalculado.setText(String.format("%.2f m", perimetro));
+
+        if (modoAuditor) {
+            return;
+        }
+
+        if (SolapamientoValidator.tieneAutoInterseccion(verticesActuales)) {
+            mostrarMensajeEstado("ERROR: Los linderos del polígono se cruzan entre sí.", "#dc2626");
+            if (btnGuardarPredio != null) btnGuardarPredio.setDisable(true);
+            return;
+        }
+
+        for (Predio existente : prediosExistentes) {
+            if (SolapamientoValidator.PoligonosSeSolapan(verticesActuales, existente.getVertices())) {
+                mostrarMensajeEstado("ALERTA DE SOLAPAMIENTO: Invade el predio " + existente.getCodigoCatastral(), "#dc2626");
+                if (btnGuardarPredio != null) btnGuardarPredio.setDisable(true);
+                return;
+            }
+        }
+
+        mostrarMensajeEstado("Topología válida en catastro de Sincelejo.", "#16a34a");
+        if (btnGuardarPredio != null) btnGuardarPredio.setDisable(false);
+    }
+
+    public void redibujarMapa() {
+        if (mapaCanvas == null) return;
+        GraphicsContext gc = mapaCanvas.getGraphicsContext2D();
+        double w = mapaCanvas.getWidth();
+        double h = mapaCanvas.getHeight();
+
+        if (mostrarMapaSatelitalOSM && osmTileManager != null) {
+            osmTileManager.renderizarMapaBase(gc, w, h);
+        } else {
+            gc.setFill(Color.web("#f8fafc"));
+            gc.fillRect(0, 0, w, h);
+            gc.setStroke(Color.web("#e2e8f0"));
+            gc.setLineWidth(1.0);
+            for (int x = 0; x < w; x += 40) gc.strokeLine(x, 0, x, h);
+            for (int y = 0; y < h; y += 40) gc.strokeLine(0, y, w, y);
+        }
+
+        // 1. Dibujar predios de la malla oficial (aprobados en catastro de Sincelejo)
+        for (Predio p : prediosExistentes) {
+            if (predioEnAuditoria != null && p.getId() == predioEnAuditoria.getId()) {
                 continue;
             }
-            sb.append(Character.toUpperCase(parte.charAt(0)));
-            if (sb.length() == 2) {
-                break;
-            }
-        }
-        return sb.toString();
-    }
 
-    // ─── Acciones del usuario ──────────────────────────────────────────────
+            List<Vertice> verts = p.getVertices();
+            if (verts == null || verts.size() < 3) continue;
 
-    @FXML
-    private void handleClickCanvas(MouseEvent event) {
-        if (enviado) {
-            return;
-        }
-        double x = Math.round(event.getX() / escala * 10) / 10.0;
-        double y = Math.round(event.getY() / escala * 10) / 10.0;
-        agregarVertice(x, y);
-    }
+            int numV = verts.size();
+            double[] xs = new double[numV];
+            double[] ys = new double[numV];
+            boolean esGeo = esCoordenadaGeografica(verts.get(0));
 
-    @FXML
-    private void handleAnadirVertice() {
-        if (enviado) {
-            return;
-        }
-        try {
-            double x = Double.parseDouble(txtX.getText().trim().replace(',', '.'));
-            double y = Double.parseDouble(txtY.getText().trim().replace(',', '.'));
-            if (!Double.isFinite(x) || !Double.isFinite(y)) {
-                throw new NumberFormatException("valor no finito");
-            }
-            agregarVertice(x, y);
-            txtX.clear();
-            txtY.clear();
-            txtX.requestFocus();
-        } catch (NumberFormatException e) {
-            mostrarMensaje("⚠ Escribe números válidos en X e Y.", ESTILO_ERROR);
-        }
-    }
-
-    private void agregarVertice(double x, double y) {
-        colorBorde = AZUL;
-        mostrarMensaje("", ESTILO_NEUTRO);
-        vertices.add(new Point2D(x, y));
-    }
-
-    @FXML
-    private void handleDeshacer() {
-        if (enviado || vertices.isEmpty()) {
-            return;
-        }
-        colorBorde = AZUL;
-        mostrarMensaje("", ESTILO_NEUTRO);
-        vertices.remove(vertices.size() - 1);
-    }
-
-    @FXML
-    private void handleReiniciar() {
-        enviado = false;
-        colorBorde = AZUL;
-        mostrarMensaje("", ESTILO_NEUTRO);
-        vertices.clear();
-        actualizarVertices();
-    }
-
-    @FXML
-    private void handleZoomIn() {
-        escala = Math.min(ZOOM_MAX, escala * ZOOM_PASO);
-        redibujar();
-    }
-
-    @FXML
-    private void handleZoomOut() {
-        escala = Math.max(ZOOM_MIN, escala / ZOOM_PASO);
-        redibujar();
-    }
-
-    @FXML
-    private void handleValidarYEnviar() {
-        if (enviado || vertices.size() < 3) {
-            return;
-        }
-
-        List<Vertice> verticesModelo = VerticeAdapter.desdeCanvas(new ArrayList<>(vertices));
-        Polygon poligonoNuevo = SolapamientoValidator.construirPoligono(verticesModelo);
-
-        if (!poligonoNuevo.isValid()) {
-            colorBorde = ROJO;
-            mostrarMensaje("⚠ Las líneas del polígono se cruzan entre sí. Corrige los vértices.", ESTILO_ERROR);
-            redibujar();
-            return;
-        }
-
-        enviado = true;
-        btnEnviar.setDisable(true);
-        contenedorCanvas.setDisable(true);
-        mostrarMensaje("Procesando...", ESTILO_NEUTRO);
-
-        Task<ResultadoRegistro> tarea = new Task<>() {
-            @Override
-            protected ResultadoRegistro call() {
-                double area = ShoelaceCalculator.calcularArea(verticesModelo);
-
-                boolean solapa = SolapamientoValidator.existeSolapamiento(poligonoNuevo, prediosAprobados);
-                if (solapa) {
-                    return new ResultadoRegistro(area, true, false, null);
-                }
-
-                try {
-                    Predio predio = new Predio(propietario.getId());
-                    predio.setAreaCalculada(area);
-                    predio.setVertices(verticesModelo);
-                    new PredioDAO().insertarConVertices(predio);
-                    return new ResultadoRegistro(area, false, true, null);
-                } catch (SQLException e) {
-                    return new ResultadoRegistro(area, false, false, e.getMessage());
+            for (int i = 0; i < numV; i++) {
+                Vertice v = verts.get(i);
+                if (esGeo) {
+                    double[] screen = osmTileManager.geoToScreenPixel(v.getX(), v.getY(), w, h);
+                    xs[i] = screen[0];
+                    ys[i] = screen[1];
+                } else {
+                    xs[i] = v.getX();
+                    ys[i] = v.getY();
                 }
             }
-        };
 
-        tarea.setOnSucceeded(e -> {
-            contenedorCanvas.setDisable(false);
-            aplicarResultado(tarea.getValue());
-        });
-        tarea.setOnFailed(e -> {
-            contenedorCanvas.setDisable(false);
-            enviado = false;
-            colorBorde = ROJO;
-            Throwable causa = tarea.getException();
-            mostrarMensaje("⚠ Error inesperado: " + (causa != null ? causa.getMessage() : "desconocido"), ESTILO_ERROR);
-            actualizarVertices();
-        });
-
-        Thread hilo = new Thread(tarea);
-        hilo.setDaemon(true);
-        hilo.start();
-    }
-
-    private void aplicarResultado(ResultadoRegistro resultado) {
-        if (resultado.isSolapa()) {
-            enviado = false;
-            colorBorde = ROJO;
-            mostrarMensaje("⚠ Este predio se solapa con uno ya aprobado (contorno punteado). No se registró.", ESTILO_ERROR);
-        } else if (resultado.isGuardadoExitoso()) {
-            colorBorde = VERDE;
-            mostrarMensaje("✔ Predio enviado a catastro. Quedó pendiente de aprobación.", ESTILO_OK);
-        } else {
-            enviado = false;
-            colorBorde = ROJO;
-            mostrarMensaje("⚠ El predio es válido pero no se pudo guardar: " + resultado.getMensajeError(), ESTILO_ERROR);
-        }
-        actualizarVertices();
-    }
-
-    /**
-     * Regresa al menú del propietario conservando la sesión activa.
-     */
-    @FXML
-    private void handleVolver(ActionEvent event) {
-        try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-propietario.fxml"));
-            Parent root = loader.load();
-
-            MenuPropietarioController controller = loader.getController();
-            controller.setUsuario(this.propietario);
-
-            Stage stage = (Stage) ((Node) event.getSource()).getScene().getWindow();
-            Scene escena = new Scene(root, 800, 600);
-            escena.getStylesheets().add(
-                getClass().getResource("/styles/main.css").toExternalForm()
-            );
-            stage.setScene(escena);
-            stage.setTitle("SIGCAT - Panel del Propietario");
-            stage.setResizable(true);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    // ─── Estado y mensajes ─────────────────────────────────────────────────
-
-    private void actualizarVertices() {
-        double area = 0.0;
-        if (vertices.size() >= 3) {
-            area = ShoelaceCalculator.calcularArea(VerticeAdapter.desdeCanvas(new ArrayList<>(vertices)));
-        }
-        lblArea.setText(String.format("%.2f px²", area));
-        btnEnviar.setDisable(vertices.size() < 3 || enviado);
-        redibujar();
-    }
-
-    private void mostrarMensaje(String texto, String estilo) {
-        lblEstado.setText(texto);
-        lblEstado.setStyle(estilo);
-    }
-
-    // ─── Dibujo ────────────────────────────────────────────────────────────
-
-    private void redibujar() {
-        double ancho = canvasDibujo.getWidth();
-        double alto = canvasDibujo.getHeight();
-        if (ancho <= 0 || alto <= 0) {
-            return;
-        }
-
-        GraphicsContext gc = canvasDibujo.getGraphicsContext2D();
-        gc.setFill(Color.web("#0b1324"));
-        gc.fillRect(0, 0, ancho, alto);
-
-        gc.save();
-        gc.scale(escala, escala);
-        dibujarCuadricula(gc, ancho / escala, alto / escala);
-        dibujarPrediosAprobados(gc);
-        dibujarPredioActual(gc);
-        gc.restore();
-
-        gc.setFill(Color.web("#64748b"));
-        gc.setFont(Font.font(12));
-        gc.fillText(String.format("Zoom %d%%", Math.round(escala * 100)), 14, alto - 14);
-    }
-
-    private void dibujarCuadricula(GraphicsContext gc, double ancho, double alto) {
-        gc.setLineWidth(1.0 / escala);
-
-        int i = 0;
-        for (double x = 0; x <= ancho; x += TAM_CUADRICULA, i++) {
-            gc.setStroke(i % 5 == 0 ? Color.web("#24324d") : Color.web("#16213a"));
-            gc.strokeLine(x, 0, x, alto);
-        }
-
-        i = 0;
-        for (double y = 0; y <= alto; y += TAM_CUADRICULA, i++) {
-            gc.setStroke(i % 5 == 0 ? Color.web("#24324d") : Color.web("#16213a"));
-            gc.strokeLine(0, y, ancho, y);
-        }
-    }
-
-    /** Predios ya aprobados: contorno punteado ámbar de referencia. */
-    private void dibujarPrediosAprobados(GraphicsContext gc) {
-        gc.setLineWidth(1.5 / escala);
-        for (Polygon poligono : prediosAprobados) {
-            Coordinate[] coords = poligono.getExteriorRing().getCoordinates();
-            double[] xs = new double[coords.length];
-            double[] ys = new double[coords.length];
-            for (int i = 0; i < coords.length; i++) {
-                xs[i] = coords[i].x;
-                ys[i] = coords[i].y;
+            if ("APROBADO".equalsIgnoreCase(p.getEstado())) {
+                gc.setFill(Color.rgb(37, 99, 235, 0.35));
+                gc.setStroke(Color.web("#1d4ed8"));
+            } else {
+                gc.setFill(Color.rgb(245, 158, 11, 0.35));
+                gc.setStroke(Color.web("#b45309"));
             }
+            gc.setLineWidth(2.2);
+            gc.fillPolygon(xs, ys, numV);
+            gc.strokePolygon(xs, ys, numV);
 
-            gc.setFill(Color.web("#f59e0b", 0.1));
-            gc.fillPolygon(xs, ys, xs.length);
-
-            gc.setStroke(AMBAR);
-            gc.setLineDashes(8 / escala, 6 / escala);
-            gc.strokePolygon(xs, ys, xs.length);
-            gc.setLineDashes((double[]) null);
+            double labelX, labelY;
+            if (esGeo) {
+                Vertice geoCentro = ShoelaceCalculator.calcularCentroide(verts);
+                double[] screenCentro = osmTileManager.geoToScreenPixel(geoCentro.getX(), geoCentro.getY(), w, h);
+                labelX = screenCentro[0];
+                labelY = screenCentro[1];
+            } else {
+                Vertice centro = ShoelaceCalculator.calcularCentroide(verts);
+                labelX = centro.getX();
+                labelY = centro.getY();
+            }
+            gc.setFill(Color.web("#0f172a"));
+            gc.setFont(Font.font("System", 11));
+            gc.fillText(p.getCodigoCatastral(), labelX - 25, labelY);
         }
-    }
 
-    /** Predio que se está dibujando: relleno suave, líneas sólidas y nodos rojos. */
-    private void dibujarPredioActual(GraphicsContext gc) {
-        int n = vertices.size();
-        if (n == 0) {
-            return;
-        }
-
-        if (n >= 3) {
+        // 2. Dibujar polígono en trazado activo o en modo inspección
+        if (!verticesActuales.isEmpty()) {
+            int n = verticesActuales.size();
             double[] xs = new double[n];
             double[] ys = new double[n];
+            boolean esGeo = esCoordenadaGeografica(verticesActuales.get(0));
+
             for (int i = 0; i < n; i++) {
-                xs[i] = vertices.get(i).getX();
-                ys[i] = vertices.get(i).getY();
+                Vertice v = verticesActuales.get(i);
+                if (esGeo) {
+                    double[] screen = osmTileManager.geoToScreenPixel(v.getX(), v.getY(), w, h);
+                    xs[i] = screen[0];
+                    ys[i] = screen[1];
+                } else {
+                    xs[i] = v.getX();
+                    ys[i] = v.getY();
+                }
             }
-            gc.setFill(Color.color(colorBorde.getRed(), colorBorde.getGreen(), colorBorde.getBlue(), 0.15));
-            gc.fillPolygon(xs, ys, n);
+
+            boolean hayConflicto = SolapamientoValidator.tieneAutoInterseccion(verticesActuales) ||
+                    prediosExistentes.stream()
+                            .filter(p -> predioEnAuditoria == null || p.getId() != predioEnAuditoria.getId())
+                            .anyMatch(p -> SolapamientoValidator.PoligonosSeSolapan(verticesActuales, p.getVertices()));
+
+            if (n >= 3) {
+                if (modoAuditor && predioEnAuditoria != null) {
+                    if ("APROBADO".equalsIgnoreCase(predioEnAuditoria.getEstado())) {
+                        gc.setFill(Color.rgb(34, 197, 94, 0.40));
+                        gc.setStroke(Color.web("#15803d"));
+                    } else if ("RECHAZADO".equalsIgnoreCase(predioEnAuditoria.getEstado())) {
+                        gc.setFill(Color.rgb(239, 68, 68, 0.40));
+                        gc.setStroke(Color.web("#dc2626"));
+                    } else {
+                        gc.setFill(Color.rgb(245, 158, 11, 0.40));
+                        gc.setStroke(Color.web("#d97706"));
+                    }
+                } else {
+                    gc.setFill(hayConflicto ? Color.rgb(239, 68, 68, 0.45) : Color.rgb(34, 197, 94, 0.40));
+                    gc.setStroke(hayConflicto ? Color.web("#dc2626") : Color.web("#15803d"));
+                }
+                gc.setLineWidth(2.8);
+                gc.fillPolygon(xs, ys, n);
+                gc.strokePolygon(xs, ys, n);
+            } else {
+                gc.setStroke(Color.web("#15803d"));
+                gc.setLineWidth(2.8);
+                gc.strokePolygon(xs, ys, n);
+            }
+
+            // Dibujar vértices con números de orden
+            for (int i = 0; i < n; i++) {
+                double vx = xs[i];
+                double vy = ys[i];
+                gc.setFill(Color.web("#ffffff"));
+                gc.fillOval(vx - 5, vy - 5, 10, 10);
+                gc.setStroke(Color.web("#0f172a"));
+                gc.setLineWidth(2.0);
+                gc.strokeOval(vx - 5, vy - 5, 10, 10);
+
+                gc.setFill(Color.web("#0f172a"));
+                gc.setFont(Font.font("System", 10));
+                gc.fillText(String.valueOf(i + 1), vx + 7, vy - 4);
+            }
+        }
+    }
+
+    @FXML
+    public void alternarCapaMapa() {
+        this.mostrarMapaSatelitalOSM = !this.mostrarMapaSatelitalOSM;
+        redibujarMapa();
+    }
+
+    @FXML
+    public void limpiarLienzo() {
+        verticesActuales.clear();
+        actualizarMetricasYValidacion();
+        redibujarMapa();
+    }
+
+    @FXML
+    public void deshacerUltimoVertice() {
+        if (!verticesActuales.isEmpty()) {
+            verticesActuales.remove(verticesActuales.size() - 1);
+            actualizarMetricasYValidacion();
+            redibujarMapa();
+        }
+    }
+
+    @FXML
+    public void guardarSolicitudPredio() {
+        if (verticesActuales.size() < 3) {
+            mostrarMensajeEstado("Debe definir al menos 3 vértices.", "#dc2626");
+            return;
         }
 
-        gc.setStroke(colorBorde);
-        gc.setLineWidth(2.0 / escala);
-        for (int i = 0; i < n - 1; i++) {
-            Point2D a = vertices.get(i);
-            Point2D b = vertices.get(i + 1);
-            gc.strokeLine(a.getX(), a.getY(), b.getX(), b.getY());
-        }
-        if (n >= 3) {
-            Point2D ultimo = vertices.get(n - 1);
-            Point2D primero = vertices.get(0);
-            gc.strokeLine(ultimo.getX(), ultimo.getY(), primero.getX(), primero.getY());
+        String nombre = txtNombrePredio != null ? txtNombrePredio.getText().trim() : "";
+        String direccion = txtDireccion != null ? txtDireccion.getText().trim() : "";
+
+        if (nombre.isEmpty() || direccion.isEmpty()) {
+            mostrarMensajeEstado("Complete el nombre y la dirección del predio en Sincelejo.", "#dc2626");
+            return;
         }
 
-        gc.setFont(Font.font(12.0 / escala));
-        double radio = RADIO_NODO / escala;
-        for (int i = 0; i < n; i++) {
-            Point2D p = vertices.get(i);
-            gc.setFill(ROJO);
-            gc.fillOval(p.getX() - radio, p.getY() - radio, radio * 2, radio * 2);
-            gc.setFill(Color.web("#e2e8f0"));
-            gc.fillText("P" + (i + 1), p.getX() + 8 / escala, p.getY() - 8 / escala);
+        Predio nuevo = new Predio();
+        // Prefijo 70001 correspondiente al código DANE catastral de Sincelejo, Sucre
+        nuevo.setCodigoCatastral("70001-" + UUID.randomUUID().toString().substring(0, 5).toUpperCase());
+        nuevo.setNombre(nombre);
+        nuevo.setDireccion(direccion + " - Sincelejo, Sucre");
+        nuevo.setUsoSuelo(cmbUsoSuelo != null ? cmbUsoSuelo.getValue() : "Residencial");
+        List<Vertice> verticesParaCalculo = convertirAVerticesMetros(verticesActuales);
+        nuevo.setArea(ShoelaceCalculator.calcularArea(verticesParaCalculo));
+        nuevo.setEstado("PENDIENTE");
+        nuevo.setPropietarioId(propietarioActualId);
+        nuevo.setObservaciones("Levantamiento catastral en Sincelejo, Sucre (Sector: " +
+                (cmbSectorSincelejo != null ? cmbSectorSincelejo.getValue() : "Urbano") + ")");
+        nuevo.setVertices(new ArrayList<>(verticesActuales));
+
+        int idGenerado = predioDAO.registrarPredio(nuevo);
+        if (idGenerado > 0) {
+            cargarMallaCatastral();
+            limpiarLienzo();
+            if (txtNombrePredio != null) txtNombrePredio.clear();
+            if (txtDireccion != null) txtDireccion.clear();
+            mostrarMensajeEstado("Predio radicado en Sincelejo con código " + nuevo.getCodigoCatastral(), "#16a34a");
+        } else {
+            mostrarMensajeEstado("Error al guardar el predio en la base de datos.", "#dc2626");
+        }
+    }
+
+    @FXML
+    public void volverAlMenu(ActionEvent event) {
+        try {
+            Stage stage = ViewNavigator.obtenerStage(event);
+            if (modoAuditor || (usuarioActual != null && "FUNCIONARIO".equalsIgnoreCase(usuarioActual.getRol()))) {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-funcionario.fxml"));
+                Parent root = loader.load();
+                MenuFuncionarioController controller = loader.getController();
+                if (controller != null && usuarioActual != null) {
+                    controller.setUsuario(usuarioActual);
+                }
+                ViewNavigator.cambiarVista(stage, root, "SIGCAT — Consola de Funcionario Catastral");
+            } else {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-propietario.fxml"));
+                Parent root = loader.load();
+                MenuPropietarioController controller = loader.getController();
+                if (controller != null) {
+                    if (usuarioActual != null) {
+                        controller.inicializarSesionPropietario(usuarioActual);
+                    } else {
+                        controller.setPropietarioId(propietarioActualId);
+                    }
+                }
+                ViewNavigator.cambiarVista(stage, root, "SIGCAT — Portal del Propietario");
+            }
+        } catch (IOException e) {
+            mostrarMensajeEstado("No se pudo regresar al menú: " + e.getMessage(), "#dc2626");
+        }
+    }
+
+    private void mostrarMensajeEstado(String texto, String colorHex) {
+        if (lblEstadoValidacion != null) {
+            lblEstadoValidacion.setText(texto);
+            lblEstadoValidacion.setStyle("-fx-text-fill: " + colorHex + "; -fx-font-weight: bold;");
         }
     }
 }

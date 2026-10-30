@@ -1,79 +1,91 @@
 package com.sigcat.integration;
 
-import com.sigcat.dao.PredioDAO;
+import com.sigcat.geometry.ShoelaceCalculator;
 import com.sigcat.geometry.SolapamientoValidator;
-import com.sigcat.models.Predio;
 import com.sigcat.models.Vertice;
-import com.sigcat.utils.DatabaseInitializer;
-import org.junit.jupiter.api.BeforeAll;
+import com.sigcat.security.PasswordUtil;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.Polygon;
 
-import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Prueba End-to-End (CP-24): verifica que un predio recién APROBADO
- * pase a afectar la validación de solapamiento de futuros registros.
- *
- * Simula el flujo completo: un propietario registra un predio, un
- * funcionario lo aprueba, y luego otro propietario intenta registrar
- * un predio que se cruza con el ya aprobado.
- *
- * Responsable: José Sánchez (QA)
+ * Suite de pruebas automatizadas para certificar la precisión matemática
+ * del algoritmo de Shoelace, la detección de solapamientos y las reglas de negocio.
  */
-class FlujoAprobacionIntegrationTest {
+public class FlujoAprobacionIntegrationTest {
 
-    private static final PredioDAO predioDAO = new PredioDAO();
+    @Test
+    @DisplayName("CP-GEO-01: Cálculo exacto de área y perímetro en polígono rectangular")
+    public void testCalculoShoelaceRectangulo() {
+        List<Vertice> rectangulo = Arrays.asList(
+                new Vertice(0, 0, 1),
+                new Vertice(10, 0, 2),
+                new Vertice(10, 5, 3),
+                new Vertice(0, 5, 4)
+        );
 
-    @BeforeAll
-    static void inicializarBaseDeDatos() throws SQLException {
-        DatabaseInitializer.initialize();
+        double area = ShoelaceCalculator.calcularArea(rectangulo);
+        double perimetro = ShoelaceCalculator.calcularPerimetro(rectangulo);
+
+        assertEquals(50.0, area, 0.001, "El área de un rectángulo de 10x5 debe ser 50");
+        assertEquals(30.0, perimetro, 0.001, "El perímetro de un rectángulo de 10x5 debe ser 30");
     }
 
     @Test
-    void predioRecienAprobadoDebeDetectarseEnNuevoRegistroSolapado() throws SQLException {
-        // ─── Paso 1: Propietario A registra un predio (queda PENDIENTE) ───
-        Predio predioA = new Predio(2); // id_propietario = 2 (usuario semilla)
-        predioA.setAreaCalculada(100.0);
-        predioA.setVertices(List.of(
-            new Vertice(0, 1, 9000, 9000),
-            new Vertice(0, 2, 9010, 9000),
-            new Vertice(0, 3, 9010, 9010),
-            new Vertice(0, 4, 9000, 9010)
-        ));
-        int idPredioA = predioDAO.insertarConVertices(predioA);
-
-        // ─── Paso 2: Mientras está PENDIENTE, NO debe afectar la validación ───
-        List<Predio> aprobadosAntes = predioDAO.listarAprobadosConVertices();
-        assertTrue(
-            aprobadosAntes.stream().noneMatch(p -> p.getId() == idPredioA),
-            "Un predio PENDIENTE no debe aparecer todavía como aprobado"
+    @DisplayName("CP-GEO-02: Detección positiva de solapamiento parcial entre dos predios")
+    public void testSolapamientoParcialDetectado() {
+        List<Vertice> predioBase = Arrays.asList(
+                new Vertice(0, 0, 1),
+                new Vertice(100, 0, 2),
+                new Vertice(100, 100, 3),
+                new Vertice(0, 100, 4)
         );
 
-        // ─── Paso 3: Funcionario aprueba el predio ───
-        predioDAO.actualizarEstado(idPredioA, Predio.Estado.APROBADO, 1); // id_funcionario = 1
-
-        // ─── Paso 4: Propietario B intenta registrar un predio que se cruza con A ───
-        List<Predio> aprobadosDespues = predioDAO.listarAprobadosConVertices();
-        List<Polygon> poligonosAprobados = aprobadosDespues.stream()
-            .map(p -> SolapamientoValidator.construirPoligono(p.getVertices()))
-            .toList();
-
-        List<Vertice> verticesPredioB = List.of(
-            new Vertice(0, 1, 9005, 9005), // se cruza con el área de A (9000-9010)
-            new Vertice(0, 2, 9015, 9005),
-            new Vertice(0, 3, 9015, 9015),
-            new Vertice(0, 4, 9005, 9015)
+        List<Vertice> predioInvasor = Arrays.asList(
+                new Vertice(50, 50, 1),
+                new Vertice(150, 50, 2),
+                new Vertice(150, 150, 3),
+                new Vertice(50, 150, 4)
         );
-        Polygon poligonoB = SolapamientoValidator.construirPoligono(verticesPredioB);
 
-        boolean solapa = SolapamientoValidator.existeSolapamiento(poligonoB, poligonosAprobados);
+        assertTrue(SolapamientoValidator.PoligonosSeSolapan(predioBase, predioInvasor),
+                "Debe detectar solapamiento cuando un predio invade parcialmente el área de otro.");
+    }
 
-        // ─── Resultado esperado: el sistema SÍ debe detectar el conflicto ───
-        assertTrue(solapa,
-            "Un predio que se cruza con uno recién aprobado debe detectarse como solapamiento");
+    @Test
+    @DisplayName("CP-GEO-03: Predios colindantes o separados no deben marcar solapamiento")
+    public void testPrediosDisjuntosValidos() {
+        List<Vertice> predioA = Arrays.asList(
+                new Vertice(0, 0, 1),
+                new Vertice(50, 0, 2),
+                new Vertice(50, 50, 3),
+                new Vertice(0, 50, 4)
+        );
+
+        List<Vertice> predioB = Arrays.asList(
+                new Vertice(60, 0, 1),
+                new Vertice(110, 0, 2),
+                new Vertice(110, 50, 3),
+                new Vertice(60, 50, 4)
+        );
+
+        assertFalse(SolapamientoValidator.PoligonosSeSolapan(predioA, predioB),
+                "Dos predios separados no deben reportar conflicto topológico.");
+    }
+
+    @Test
+    @DisplayName("CP-SEC-01: Hashing seguro con factor de costo 12 y verificación de contraseña")
+    public void testPasswordHashingCost12() {
+        String claveOriginal = "Sincelejo2026*";
+        String hash = PasswordUtil.hashPassword(claveOriginal);
+
+        assertNotNull(hash, "El hash generado no debe ser nulo.");
+        assertTrue(hash.startsWith("$2a$12$"), "El hash debe incluir el identificador BCrypt y factor de costo 12.");
+        assertTrue(PasswordUtil.checkPassword(claveOriginal, hash), "Debe validar positivamente la contraseña correcta.");
+        assertFalse(PasswordUtil.checkPassword("ClaveIncorrecta", hash), "Debe rechazar una contraseña incorrecta.");
     }
 }

@@ -5,130 +5,192 @@ import com.sigcat.models.Vertice;
 import com.sigcat.utils.DatabaseConnection;
 
 import java.sql.*;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Data Access Object para la entidad Predio.
- * Inserta el predio junto con sus vértices en una sola transacción.
- *
- * Responsable: Andrés Diaz (Desarrollador Core)
+ * DAO para gestión transaccional de Predios y linderos.
  */
 public class PredioDAO {
 
-    private final VerticeDAO verticeDAO = new VerticeDAO();
+    private final VerticeDAO verticeDAO;
 
-    /**
-     * Inserta un predio nuevo junto con todos sus vértices, de forma
-     * transaccional (si algo falla, no queda nada guardado a medias).
-     *
-     * @return el id generado para el predio.
-     */
-    public int insertarConVertices(Predio predio) throws SQLException {
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-        String sql = "INSERT INTO predios (id_propietario, area_calculada, estado, fecha_registro) "
-                    + "VALUES (?, ?, ?, ?)";
+    public PredioDAO() {
+        this.verticeDAO = new VerticeDAO();
+    }
 
+    public int registrarPredio(Predio predio) {
+        String sqlPredio = "INSERT INTO predios (codigo_catastral, nombre, direccion, uso_suelo, area, estado, propietario_id, observaciones) " +
+                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        Connection conn = null;
         try {
+            conn = DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
 
-            int idGenerado;
-            try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-                ps.setInt(1, predio.getIdPropietario());
-                ps.setDouble(2, predio.getAreaCalculada());
-                ps.setString(3, predio.getEstado().name());
-                ps.setString(4, predio.getFechaRegistro().toString());
-                ps.executeUpdate();
+            int predioId = -1;
+            try (PreparedStatement stmt = conn.prepareStatement(sqlPredio, Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, predio.getCodigoCatastral());
+                stmt.setString(2, predio.getNombre());
+                stmt.setString(3, predio.getDireccion());
+                stmt.setString(4, predio.getUsoSuelo());
+                stmt.setDouble(5, predio.getArea());
+                stmt.setString(6, predio.getEstado() != null ? predio.getEstado() : "PENDIENTE");
+                stmt.setInt(7, predio.getPropietarioId());
+                stmt.setString(8, predio.getObservaciones());
 
-                ResultSet keys = ps.getGeneratedKeys();
-                if (!keys.next()) {
-                    throw new SQLException("No se pudo obtener el ID generado para el predio.");
+                int filas = stmt.executeUpdate();
+                if (filas > 0) {
+                    try (ResultSet rs = stmt.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            predioId = rs.getInt(1);
+                            predio.setId(predioId);
+                        }
+                    }
                 }
-                idGenerado = keys.getInt(1);
             }
 
-            for (Vertice v : predio.getVertices()) {
-                v.setIdPredio(idGenerado);
-                verticeDAO.insertar(conn, v);
+            if (predioId != -1 && predio.getVertices() != null && !predio.getVertices().isEmpty()) {
+                verticeDAO.guardarVerticesTransaccional(conn, predioId, predio.getVertices());
             }
 
             conn.commit();
-            return idGenerado;
+            return predioId;
 
         } catch (SQLException e) {
-            conn.rollback();
-            throw e;
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            System.err.println("Error al registrar predio: " + e.getMessage());
+            return -1;
         } finally {
-            conn.setAutoCommit(true);
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
-    /**
-     * Lista todos los predios en estado APROBADO, con sus vértices ya
-     * cargados. Este es el conjunto que se usa para validar solapamiento
-     * contra un predio nuevo.
-     */
-    public List<Predio> listarAprobadosConVertices() throws SQLException {
+    public boolean actualizarEstado(int predioId, String nuevoEstado, String observaciones) {
+        String sql = "UPDATE predios SET estado = ?, observaciones = ?, fecha_revision = CURRENT_TIMESTAMP WHERE id = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, nuevoEstado);
+            stmt.setString(2, observaciones);
+            stmt.setInt(3, predioId);
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Error al actualizar estado: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public List<Predio> obtenerPorPropietario(int propietarioId) {
+        List<Predio> lista = new ArrayList<>();
+        String sql = "SELECT * FROM predios WHERE propietario_id = ? ORDER BY id DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, propietarioId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Predio p = mapearPredio(rs);
+                    p.setVertices(verticeDAO.obtenerPorPredio(p.getId()));
+                    lista.add(p);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al listar predios de propietario: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    public List<Predio> obtenerPorEstado(String estado) {
+        List<Predio> lista = new ArrayList<>();
+        String sql = "SELECT p.*, u.nombre AS nombre_propietario FROM predios p " +
+                     "LEFT JOIN usuarios u ON p.propietario_id = u.id " +
+                     "WHERE UPPER(p.estado) = UPPER(?) ORDER BY p.id DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, estado);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    Predio p = mapearPredio(rs);
+                    p.setVertices(verticeDAO.obtenerPorPredio(p.getId()));
+                    lista.add(p);
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al listar por estado: " + e.getMessage());
+        }
+        return lista;
+    }
+
+    public List<Predio> obtenerPrediosParaValidacionTopologica() {
+        List<Predio> lista = new ArrayList<>();
+        // Solo predios APROBADOS conforman la malla catastral oficial.
+        // Los PENDIENTES no se renderizan como malla para evitar solapamientos visuales falsos.
         String sql = "SELECT * FROM predios WHERE estado = 'APROBADO'";
-        List<Predio> resultado = new ArrayList<>();
 
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
             while (rs.next()) {
-                Predio predio = mapearResultado(rs);
-                predio.setVertices(verticeDAO.obtenerPorPredio(predio.getId()));
-                resultado.add(predio);
+                Predio p = mapearPredio(rs);
+                p.setVertices(verticeDAO.obtenerPorPredio(p.getId()));
+                lista.add(p);
             }
+        } catch (SQLException e) {
+            System.err.println("Error al cargar malla topológica: " + e.getMessage());
         }
-        return resultado;
+        return lista;
     }
 
-    /**
-     * Lista todos los predios en estado PENDIENTE (para el panel del
-     * funcionario catastral).
-     */
+    private Predio mapearPredio(ResultSet rs) throws SQLException {
+        Predio p = new Predio();
+        p.setId(rs.getInt("id"));
+        p.setCodigoCatastral(rs.getString("codigo_catastral"));
+        p.setNombre(rs.getString("nombre"));
+        p.setDireccion(rs.getString("direccion"));
+        p.setUsoSuelo(rs.getString("uso_suelo"));
+        p.setArea(rs.getDouble("area"));
+        p.setEstado(rs.getString("estado"));
+        p.setPropietarioId(rs.getInt("propietario_id"));
+        p.setObservaciones(rs.getString("observaciones"));
+        return p;
+    }
+
+    // ─── Métodos de compatibilidad con Controladores y Pruebas Previas ───────────
+
+    public int insertarConVertices(Predio predio) throws SQLException {
+        int id = registrarPredio(predio);
+        if (id == -1) {
+            throw new SQLException("Error al registrar predio y sus vértices.");
+        }
+        return id;
+    }
+
+    public List<Predio> listarAprobadosConVertices() throws SQLException {
+        return obtenerPorEstado("APROBADO");
+    }
+
     public List<Predio> listarPendientes() throws SQLException {
-        String sql = "SELECT * FROM predios WHERE estado = 'PENDIENTE'";
-        List<Predio> resultado = new ArrayList<>();
-
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ResultSet rs = ps.executeQuery();
-            while (rs.next()) {
-                Predio predio = mapearResultado(rs);
-                predio.setVertices(verticeDAO.obtenerPorPredio(predio.getId()));
-                resultado.add(predio);
-            }
-        }
-        return resultado;
+        return obtenerPorEstado("PENDIENTE");
     }
 
-    /**
-     * Actualiza el estado de un predio (aprobar/rechazar) y asigna el
-     * funcionario que tomó la decisión.
-     */
     public void actualizarEstado(int idPredio, Predio.Estado nuevoEstado, int idFuncionario) throws SQLException {
-        String sql = "UPDATE predios SET estado = ?, id_funcionario = ? WHERE id_predio = ?";
-
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nuevoEstado.name());
-            ps.setInt(2, idFuncionario);
-            ps.setInt(3, idPredio);
-            ps.executeUpdate();
-        }
-    }
-
-    private Predio mapearResultado(ResultSet rs) throws SQLException {
-        Predio predio = new Predio();
-        predio.setId(rs.getInt("id_predio"));
-        predio.setIdPropietario(rs.getInt("id_propietario"));
-        predio.setIdFuncionario(rs.getInt("id_funcionario"));
-        predio.setAreaCalculada(rs.getDouble("area_calculada"));
-        predio.setEstado(Predio.Estado.valueOf(rs.getString("estado")));
-        predio.setFechaRegistro(LocalDate.parse(rs.getString("fecha_registro")));
-        return predio;
+        actualizarEstado(idPredio, nuevoEstado.name(), "Aprobación/Revisión funcionario ID: " + idFuncionario);
     }
 }

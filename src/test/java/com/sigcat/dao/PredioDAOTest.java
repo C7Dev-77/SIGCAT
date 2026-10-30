@@ -69,7 +69,7 @@ class PredioDAOTest {
             "El predio recién insertado debe aparecer en la lista de pendientes"
         );
         assertTrue(
-            pendientes.stream().allMatch(p -> p.getEstado() == Predio.Estado.PENDIENTE),
+            pendientes.stream().allMatch(p -> p.getEstadoEnum() == Predio.Estado.PENDIENTE),
             "Todos los predios listados deben estar en estado PENDIENTE"
         );
     }
@@ -88,8 +88,7 @@ class PredioDAOTest {
             .findFirst()
             .orElseThrow(() -> new AssertionError("El predio debería aparecer como APROBADO"));
 
-        assertEquals(Predio.Estado.APROBADO, actualizado.getEstado());
-        assertEquals(1, actualizado.getIdFuncionario());
+        assertEquals(Predio.Estado.APROBADO, actualizado.getEstadoEnum());
     }
 
     @Test

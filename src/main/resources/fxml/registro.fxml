@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.sigcat.controllers.RegistroController"
+            prefHeight="640.0" prefWidth="960.0"
+            styleClass="auth-root">
+    <center>
+        <VBox alignment="CENTER" maxWidth="500.0" spacing="16.0" styleClass="auth-form-card">
+            <padding>
+                <Insets bottom="36.0" left="44.0" right="44.0" top="36.0"/>
+            </padding>
+
+            <VBox alignment="CENTER_LEFT" spacing="4.0">
+                <Label styleClass="hero-badge" text="NUEVO PROPIETARIO CATASTRAL"/>
+                <Label styleClass="section-header" text="Crear Cuenta en SIGCAT"/>
+                <Label styleClass="navbar-subtitle" text="Regístrese para radicar y georreferenciar sus predios en Sincelejo"/>
+            </VBox>
+
+            <Separator/>
+
+            <VBox spacing="6.0">
+                <Label styleClass="field-label" text="Documento de Identidad (Cédula / NIT) *"/>
+                <TextField fx:id="txtDocumentoRegistro" promptText="Ej: 1102854321" styleClass="text-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label styleClass="field-label" text="Nombre Completo o Razón Social *"/>
+                <TextField fx:id="txtNombreRegistro" promptText="Ej: Carlos Andrés Mendoza" styleClass="text-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label styleClass="field-label" text="Contraseña (mínimo 6 caracteres) *"/>
+                <PasswordField fx:id="txtPasswordRegistro" promptText="Ingrese una contraseña segura" styleClass="text-input"/>
+            </VBox>
+
+            <VBox spacing="6.0">
+                <Label styleClass="field-label" text="Confirmar Contraseña *"/>
+                <PasswordField fx:id="txtConfirmarPassword" promptText="Repita la contraseña" styleClass="text-input"/>
+            </VBox>
+
+            <Label fx:id="lblMensajeRegistro" styleClass="feedback-label" wrapText="true"/>
+
+            <Button fx:id="btnRegistrar" defaultButton="true" maxWidth="1.7976931348623157E308"
+                    mnemonicParsing="false" onAction="#registrarNuevoPropietario" styleClass="btn-primary-lg"
+                    text="✔ Completar Registro"/>
+
+            <HBox alignment="CENTER" spacing="6.0">
+                <Label styleClass="navbar-subtitle" text="¿Ya tienes una cuenta registrada?"/>
+                <Hyperlink onAction="#volverALogin" styleClass="auth-link" text="Iniciar sesión"/>
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>

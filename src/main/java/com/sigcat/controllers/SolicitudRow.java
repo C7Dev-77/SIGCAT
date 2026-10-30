@@ -32,11 +32,11 @@ public class SolicitudRow {
     }
 
     public String getEstado() {
-        return predio.getEstado().name();
+        return predio.getEstado();
     }
 
     public String getFecha() {
-        return predio.getFechaRegistro().toString();
+        return predio.getFechaRegistro() != null ? predio.getFechaRegistro().toString() : "";
     }
 
     public Predio getPredio() {

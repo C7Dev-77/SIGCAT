@@ -8,99 +8,181 @@ import java.sql.*;
 import java.util.Optional;
 
 /**
- * Data Access Object para la entidad Usuario.
- * Implementa operaciones CRUD básicas y autenticación.
- *
- * Responsable: Aldo Ibañez (Persistencia)
- * Actualizado por: Cristian Morales (Arquitecto) — Migración a BCrypt (RNF-01)
+ * DAO para la gestión de Usuarios (Autenticación, verificación de unicidad de documento
+ * y registro autónomo de propietarios con hash BCrypt factor 12).
  */
 public class UsuarioDAO {
 
     /**
-     * Autentica un usuario por documento y contraseña.
-     * Busca el usuario por documento y verifica la contraseña con BCrypt.
-     *
-     * @param documento Número de documento de identidad.
-     * @param password  Contraseña del usuario en texto plano.
-     * @return Optional con el Usuario si las credenciales son válidas, vacío si no.
+     * Autentica un usuario validando su documento/username y su contraseña contra el hash almacenado.
      */
-    public Optional<Usuario> autenticar(String documento, String password) throws SQLException {
+    public Usuario autenticar(String documento, String passwordPlana) {
+        if (documento == null || passwordPlana == null) {
+            return null;
+        }
+
         String sql = "SELECT * FROM usuarios WHERE documento = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, documento);
+            stmt.setString(1, documento.trim());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String storedHash = null;
+                    try {
+                        storedHash = rs.getString("password_hash");
+                    } catch (SQLException ignored) {}
+                    if (storedHash == null || storedHash.isEmpty()) {
+                        storedHash = rs.getString("password");
+                    }
 
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                Usuario usuario = mapearResultado(rs);
-                String storedHash = usuario.getPassword();
-                if (PasswordUtil.checkPassword(password, storedHash)) {
-                    return Optional.of(usuario);
+                    if (PasswordUtil.checkPassword(passwordPlana, storedHash)) {
+                        return mapearUsuario(rs);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error en autenticación de usuario: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * Verifica si ya existe un usuario registrado con el mismo documento de identidad.
+     */
+    public boolean existeDocumento(String documento) {
+        if (documento == null || documento.trim().isEmpty()) {
+            return false;
+        }
+
+        String sql = "SELECT COUNT(1) FROM usuarios WHERE documento = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, documento.trim());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al verificar existencia de documento: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /**
+     * Registra un nuevo propietario hasheando su contraseña con factor de costo 12.
+     *
+     * @param documento     Cédula o NIT único.
+     * @param nombre        Nombre completo del propietario.
+     * @param passwordPlana Contraseña en texto plano que será hasheada antes de persistir.
+     * @return El ID autogenerado del nuevo usuario o -1 si falla.
+     */
+    public int registrarPropietario(String documento, String nombre, String passwordPlana) {
+        if (existeDocumento(documento)) {
+            return -1;
+        }
+
+        String hashSeguro = PasswordUtil.hashPassword(passwordPlana);
+        String sqlWithBoth = "INSERT INTO usuarios (documento, nombre, password_hash, password, rol) VALUES (?, ?, ?, ?, 'PROPIETARIO')";
+        String sqlLegacy = "INSERT INTO usuarios (documento, nombre, password, rol) VALUES (?, ?, ?, 'PROPIETARIO')";
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
+            try (PreparedStatement stmt = conn.prepareStatement(sqlWithBoth, Statement.RETURN_GENERATED_KEYS)) {
+                stmt.setString(1, documento.trim());
+                stmt.setString(2, nombre.trim());
+                stmt.setString(3, hashSeguro);
+                stmt.setString(4, hashSeguro);
+                int filas = stmt.executeUpdate();
+                if (filas > 0) {
+                    try (ResultSet rs = stmt.getGeneratedKeys()) {
+                        if (rs.next()) {
+                            return rs.getInt(1);
+                        }
+                    }
+                }
+            } catch (SQLException e) {
+                // Fallback si la columna password_hash no existe
+                try (PreparedStatement stmt = conn.prepareStatement(sqlLegacy, Statement.RETURN_GENERATED_KEYS)) {
+                    stmt.setString(1, documento.trim());
+                    stmt.setString(2, nombre.trim());
+                    stmt.setString(3, hashSeguro);
+                    int filas = stmt.executeUpdate();
+                    if (filas > 0) {
+                        try (ResultSet rs = stmt.getGeneratedKeys()) {
+                            if (rs.next()) {
+                                return rs.getInt(1);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al registrar nuevo propietario: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    /**
+     * Sobrecarga para insertar un objeto Usuario directamente.
+     */
+    public boolean crearUsuario(Usuario usuario, String passwordPlana) {
+        int id = registrarPropietario(usuario.getDocumento(), usuario.getNombre(), passwordPlana);
+        if (id > 0) {
+            usuario.setId(id);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Inserta un usuario con contraseña ya incluida en el modelo.
+     */
+    public int insertar(Usuario usuario) throws SQLException {
+        int id = registrarPropietario(usuario.getDocumento(), usuario.getNombre(), usuario.getPassword());
+        if (id > 0) {
+            usuario.setId(id);
+            return id;
+        }
+        throw new SQLException("No se pudo registrar el usuario o documento duplicado.");
+    }
+
+    /**
+     * Busca un usuario por su identificador único.
+     */
+    public Optional<Usuario> buscarPorId(int id) throws SQLException {
+        String sql = "SELECT * FROM usuarios WHERE id_usuario = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapearUsuario(rs));
                 }
             }
         }
         return Optional.empty();
     }
 
-    /**
-     * Busca un usuario por su id. Usado para mostrar el nombre del
-     * propietario en el panel del funcionario catastral.
-     *
-     * @return Optional con el Usuario si existe, vacío si no.
-     */
-    public Optional<Usuario> buscarPorId(int id) throws SQLException {
-        String sql = "SELECT * FROM usuarios WHERE id_usuario = ?";
-
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-
-            ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                return Optional.of(mapearResultado(rs));
-            }
+    private Usuario mapearUsuario(ResultSet rs) throws SQLException {
+        Usuario u = new Usuario();
+        try {
+            u.setId(rs.getInt("id"));
+        } catch (SQLException e) {
+            u.setId(rs.getInt("id_usuario"));
         }
-        return Optional.empty();
-    }
-
-    /**
-     * Inserta un nuevo usuario en la base de datos.
-     * Hashea la contraseña con BCrypt antes de almacenarla.
-     * El objeto Usuario no es mutado.
-     *
-     * @param usuario Objeto Usuario a insertar (sin id).
-     * @return El id generado automáticamente.
-     */
-    public int insertar(Usuario usuario) throws SQLException {
-        String sql = "INSERT INTO usuarios (documento, nombre, password, rol) VALUES (?, ?, ?, ?)";
-
-        Connection conn = DatabaseConnection.getInstance().getConnection();
-        try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, usuario.getDocumento());
-            ps.setString(2, usuario.getNombre());
-            ps.setString(3, PasswordUtil.hashPassword(usuario.getPassword()));
-            ps.setString(4, usuario.getRol().name());
-            ps.executeUpdate();
-
-            ResultSet keys = ps.getGeneratedKeys();
-            if (keys.next()) {
-                return keys.getInt(1);
-            }
+        u.setDocumento(rs.getString("documento"));
+        u.setNombre(rs.getString("nombre"));
+        String storedHash = null;
+        try {
+            storedHash = rs.getString("password_hash");
+        } catch (SQLException ignored) {}
+        if (storedHash == null || storedHash.isEmpty()) {
+            storedHash = rs.getString("password");
         }
-        throw new SQLException("No se pudo obtener el ID generado para el usuario.");
-    }
-
-    /**
-     * Mapea una fila de ResultSet a un objeto Usuario.
-     */
-    private Usuario mapearResultado(ResultSet rs) throws SQLException {
-        return new Usuario(
-            rs.getInt("id_usuario"),
-            rs.getString("documento"),
-            rs.getString("nombre"),
-            rs.getString("password"),
-            Usuario.Rol.valueOf(rs.getString("rol"))
-        );
+        u.setPasswordHash(storedHash);
+        u.setRol(rs.getString("rol"));
+        return u;
     }
 }

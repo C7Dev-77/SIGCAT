@@ -36,17 +36,51 @@ public class DatabaseInitializer {
                 );
             """);
 
+            try {
+                stmt.execute("ALTER TABLE usuarios ADD COLUMN id INTEGER GENERATED ALWAYS AS (id_usuario) VIRTUAL");
+            } catch (SQLException ignored) {}
+
+            try {
+                stmt.execute("ALTER TABLE usuarios ADD COLUMN password_hash TEXT DEFAULT ''");
+            } catch (SQLException ignored) {}
+
+            try {
+                stmt.execute("""
+                    CREATE TRIGGER IF NOT EXISTS trg_sync_user_pass_ins AFTER INSERT ON usuarios
+                    FOR EACH ROW WHEN (NEW.password_hash != '' AND (NEW.password IS NULL OR NEW.password = ''))
+                    BEGIN
+                        UPDATE usuarios SET password = NEW.password_hash WHERE id_usuario = NEW.id_usuario;
+                    END;
+                """);
+                stmt.execute("""
+                    CREATE TRIGGER IF NOT EXISTS trg_sync_user_hash_ins AFTER INSERT ON usuarios
+                    FOR EACH ROW WHEN (NEW.password != '' AND (NEW.password_hash IS NULL OR NEW.password_hash = ''))
+                    BEGIN
+                        UPDATE usuarios SET password_hash = NEW.password WHERE id_usuario = NEW.id_usuario;
+                    END;
+                """);
+                stmt.execute("UPDATE usuarios SET password_hash = password WHERE (password_hash IS NULL OR password_hash = '') AND password != ''");
+            } catch (SQLException ignored) {}
+
             // ─── Tabla: predios ────────────────────────────────────
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS predios (
-                    id_predio       INTEGER PRIMARY KEY AUTOINCREMENT,
-                    id_propietario  INTEGER NOT NULL,
-                    id_funcionario  INTEGER,
-                    area_calculada  REAL    DEFAULT 0.0,
-                    estado          TEXT    NOT NULL DEFAULT 'PENDIENTE'
-                                    CHECK(estado IN ('PENDIENTE', 'APROBADO', 'RECHAZADO')),
-                    fecha_registro  TEXT    NOT NULL,
-                    FOREIGN KEY (id_propietario) REFERENCES usuarios(id_usuario),
+                    id_predio        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    propietario_id   INTEGER NOT NULL,
+                    area             REAL DEFAULT 0.0,
+                    codigo_catastral TEXT,
+                    nombre           TEXT,
+                    direccion        TEXT,
+                    uso_suelo        TEXT,
+                    observaciones    TEXT,
+                    fecha_revision   TEXT,
+                    fecha_registro   TEXT DEFAULT CURRENT_TIMESTAMP,
+                    id_funcionario   INTEGER,
+                    estado           TEXT NOT NULL DEFAULT 'PENDIENTE',
+                    id               INTEGER GENERATED ALWAYS AS (id_predio) VIRTUAL,
+                    id_propietario   INTEGER GENERATED ALWAYS AS (propietario_id) VIRTUAL,
+                    area_calculada   REAL GENERATED ALWAYS AS (area) VIRTUAL,
+                    FOREIGN KEY (propietario_id) REFERENCES usuarios(id_usuario),
                     FOREIGN KEY (id_funcionario) REFERENCES usuarios(id_usuario)
                 );
             """);

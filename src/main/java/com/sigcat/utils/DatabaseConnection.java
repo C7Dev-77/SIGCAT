@@ -14,26 +14,59 @@ import java.sql.Statement;
  */
 public class DatabaseConnection {
 
-    // Ruta portable: guarda sigcat.db en el directorio de trabajo del proyecto
-    private static final String DB_URL = "jdbc:sqlite:sigcat.db";
+    private static final String DEFAULT_DB_URL = "jdbc:sqlite:sigcat.db";
 
     private static DatabaseConnection instance;
     private Connection connection;
 
-    private DatabaseConnection() throws SQLException {
-        connection = DriverManager.getConnection(DB_URL);
-        // Activar integridad referencial en SQLite (desactivada por defecto)
-        try (Statement stmt = connection.createStatement()) {
-            stmt.execute("PRAGMA foreign_keys = ON;");
+    /**
+     * Resuelve la URL de conexión admitiendo parámetros de red para demos multi-PC.
+     * Prioridad:
+     *   1. Propiedad del sistema JVM: -Dsigcat.db="..."
+     *   2. Variable de entorno del sistema operativo: SIGCAT_DB
+     *   3. Archivo local por defecto: sigcat.db
+     */
+    public static String resolverDbUrl() {
+        String sysProp = System.getProperty("sigcat.db");
+        if (sysProp != null && !sysProp.trim().isEmpty()) {
+            String p = sysProp.trim();
+            return p.startsWith("jdbc:sqlite:") ? p : "jdbc:sqlite:" + p;
         }
-        System.out.println("[DB] Conexión establecida con sigcat.db");
+
+        String envVar = System.getenv("SIGCAT_DB");
+        if (envVar != null && !envVar.trim().isEmpty()) {
+            String p = envVar.trim();
+            return p.startsWith("jdbc:sqlite:") ? p : "jdbc:sqlite:" + p;
+        }
+
+        return DEFAULT_DB_URL;
+    }
+
+    private DatabaseConnection() throws SQLException {
+        String dbUrl = resolverDbUrl();
+        connection = DriverManager.getConnection(dbUrl);
+
+        // Configuración de concurrencia y fiabilidad para SQLite local y en red
+        try (Statement stmt = connection.createStatement()) {
+            // Activar integridad referencial (llaves foráneas)
+            stmt.execute("PRAGMA foreign_keys = ON;");
+            // Activar modo WAL (Write-Ahead Logging) para permitir lecturas y escrituras simultáneas
+            try {
+                stmt.execute("PRAGMA journal_mode = WAL;");
+            } catch (SQLException ignored) {}
+            // Tiempo de espera de hasta 5 segundos si otro PC está escribiendo
+            try {
+                stmt.execute("PRAGMA busy_timeout = 5000;");
+            } catch (SQLException ignored) {}
+        }
+        System.out.println("[DB] Conexión establecida con: " + dbUrl);
     }
 
     /**
      * Obtiene la instancia única de la conexión (Singleton).
      */
     public static DatabaseConnection getInstance() throws SQLException {
-        if (instance == null || instance.getConnection().isClosed()) {
+        if (instance == null || instance.connection == null || instance.connection.isClosed()) {
             instance = new DatabaseConnection();
         }
         return instance;
@@ -42,8 +75,8 @@ public class DatabaseConnection {
     /**
      * Retorna el objeto Connection de JDBC.
      */
-    public Connection getConnection() {
-        return connection;
+    public static Connection getConnection() throws SQLException {
+        return getInstance().connection;
     }
 
     /**

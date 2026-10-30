@@ -1,44 +1,130 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.canvas.Canvas?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.geometry.Insets?>
+<?import javafx.scene.layout.Pane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
 
 <!--
-    Vista del Canvas de dibujo de predios - SIGCAT
-    Responsable: Leider Barreto (UI/UX)
+    Vista de Levantamiento Catastral y Mapa OSM Sincelejo - SIGCAT Hito 2
+    Motor Cartográfico OpenStreetMap 100% Java Nativo | Código DANE: 70001
     Controlador: com.sigcat.controllers.DibujoController
-
-    Instrucciones:
-      - Haz clic en el Canvas para añadir vértices.
-      - El primer punto se marca con un círculo naranja.
-      - Haz clic cerca del primer punto (con ≥3 vértices) para cerrar el polígono.
-      - Usa "Reiniciar dibujo" para empezar de nuevo.
 -->
 <BorderPane xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.sigcat.controllers.DibujoController"
-            styleClass="dibujo-root">
+            styleClass="dibujo-root"
+            prefWidth="1280.0" prefHeight="768.0">
 
-    <center>
-        <Canvas fx:id="canvasDibujo" width="1024.0" height="700.0"
-                onMouseClicked="#handleClickCanvas"
-                style="-fx-background-color: #0d0d1a;"/>
-    </center>
-
-    <bottom>
-        <HBox spacing="16.0" alignment="CENTER_LEFT" styleClass="dibujo-toolbar">
+    <!-- BARRA SUPERIOR INSTITUCIONAL -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="16.0" styleClass="top-navbar">
             <padding>
-                <Insets top="10" right="16" bottom="10" left="16"/>
+                <Insets bottom="12.0" left="24.0" right="24.0" top="12.0"/>
             </padding>
-            <Label fx:id="lblArea" text="Área: -" styleClass="dibujo-info"/>
-            <Label fx:id="lblEstado" text="" styleClass="dibujo-info" HBox.hgrow="ALWAYS"/>
-            <Button text="Reiniciar dibujo" onAction="#handleReiniciar" styleClass="btn-secondary"/>
-            <Button text="← Volver al menú" onAction="#handleVolver" styleClass="btn-secondary"/>
+            <VBox spacing="2.0">
+                <Label styleClass="navbar-title" text="SIGCAT — Levantamiento Georreferenciado (Sincelejo, Sucre)"/>
+                <Label styleClass="navbar-subtitle" text="Motor Cartográfico OpenStreetMap 100% Java Nativo | Código DANE: 70001"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label styleClass="field-label" text="Sector Urbano:"/>
+            <ComboBox fx:id="cmbSectorSincelejo" prefWidth="260.0" styleClass="combo-input"/>
+            <Button mnemonicParsing="false" onAction="#centrarMapaEnSincelejo" styleClass="btn-secondary" text="📍 Centrar Sincelejo"/>
+            <Button mnemonicParsing="false" onAction="#alternarCapaMapa" styleClass="btn-secondary" text="🗺️ Capa OSM / Cuadrícula"/>
+            <Button mnemonicParsing="false" onAction="#volverAlMenu" styleClass="btn-outline" text="⬅ Volver al Panel"/>
         </HBox>
-    </bottom>
+    </top>
+
+    <!-- CONTENIDO PRINCIPAL DIVIDIDO -->
+    <center>
+        <SplitPane dividerPositions="0.72" styleClass="main-split-pane">
+            <!-- LIENZO CARTOGRÁFICO INTERACTIVO -->
+            <BorderPane styleClass="canvas-wrapper">
+                <center>
+                    <Pane styleClass="map-canvas-container">
+                        <Canvas fx:id="mapaCanvas" height="640.0" width="890.0"/>
+                    </Pane>
+                </center>
+                <bottom>
+                    <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="status-bar">
+                        <padding>
+                            <Insets bottom="8.0" left="16.0" right="16.0" top="8.0"/>
+                        </padding>
+                        <Label styleClass="status-tag" text="ESTADO TOPOLÓGICO:"/>
+                        <Label fx:id="lblEstadoValidacion" text="Listo para trazar linderos en Sincelejo..." HBox.hgrow="ALWAYS"/>
+                    </HBox>
+                </bottom>
+            </BorderPane>
+
+            <!-- PANEL LATERAL DERECHO: DATOS CATASTRALES Y MÉTRICAS -->
+            <VBox spacing="16.0" styleClass="sidebar-card">
+                <padding>
+                    <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
+                </padding>
+
+                <Label styleClass="section-header" text="Ficha de Radicación Predial"/>
+                <Separator/>
+
+                <VBox spacing="6.0">
+                    <Label styleClass="field-label" text="Nombre o Denominación del Predio *"/>
+                    <TextField fx:id="txtNombrePredio" promptText="Ej: Lote Las Mercedes Manzana B" styleClass="text-input"/>
+                </VBox>
+
+                <VBox spacing="6.0">
+                    <Label styleClass="field-label" text="Dirección Nomenclatura Urbana *"/>
+                    <TextField fx:id="txtDireccion" promptText="Ej: Calle 25 # 18-30" styleClass="text-input"/>
+                </VBox>
+
+                <VBox spacing="6.0">
+                    <Label styleClass="field-label" text="Destinación Económica / Uso del Suelo"/>
+                    <ComboBox fx:id="cmbUsoSuelo" maxWidth="1.7976931348623157E308" styleClass="combo-input"/>
+                </VBox>
+
+                <Separator/>
+                <Label styleClass="section-header" text="Métricas Geométricas (Shoelace)"/>
+
+                <HBox spacing="10.0">
+                    <VBox alignment="CENTER" styleClass="metric-box" HBox.hgrow="ALWAYS">
+                        <Label styleClass="metric-title" text="ÁREA ESTIMADA"/>
+                        <Label fx:id="lblAreaCalculada" styleClass="metric-value-primary" text="0.00 m²"/>
+                    </VBox>
+                    <VBox alignment="CENTER" styleClass="metric-box" HBox.hgrow="ALWAYS">
+                        <Label styleClass="metric-title" text="PERÍMETRO"/>
+                        <Label fx:id="lblPerimetroCalculado" styleClass="metric-value-secondary" text="0.00 m"/>
+                    </VBox>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0" styleClass="metric-inline-box">
+                    <Label styleClass="metric-title" text="Vértices Georreferenciados:"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lblCantidadVertices" styleClass="metric-badge" text="0"/>
+                </HBox>
+
+                <Separator/>
+                <Label styleClass="section-header" text="Herramientas de Trazado"/>
+
+                <HBox spacing="10.0">
+                    <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false"
+                            onAction="#deshacerUltimoVertice" styleClass="btn-warning" text="↩ Deshacer Vértice" HBox.hgrow="ALWAYS"/>
+                    <Button maxWidth="1.7976931348623157E308" mnemonicParsing="false"
+                            onAction="#limpiarLienzo" styleClass="btn-danger-outline" text="🗑 Limpiar Lienzo" HBox.hgrow="ALWAYS"/>
+                </HBox>
+
+                <Region VBox.vgrow="ALWAYS"/>
+
+                <Button fx:id="btnGuardarPredio" maxWidth="1.7976931348623157E308" mnemonicParsing="false"
+                        onAction="#guardarSolicitudPredio" styleClass="btn-primary-lg" text="✔ Radicar Solicitud Catastral"/>
+            </VBox>
+        </SplitPane>
+    </center>
 
 </BorderPane>

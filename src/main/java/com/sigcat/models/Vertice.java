@@ -23,6 +23,16 @@ public class Vertice {
         this.coordY = coordY;
     }
 
+    public Vertice(double coordX, double coordY, int orden) {
+        this.coordX = coordX;
+        this.coordY = coordY;
+        this.orden = orden;
+    }
+
+    public Vertice(double coordX, double coordY) {
+        this(coordX, coordY, 0);
+    }
+
     // ─── Getters y Setters ───────────────────────────────────────
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
@@ -38,6 +48,13 @@ public class Vertice {
 
     public double getCoordY() { return coordY; }
     public void setCoordY(double coordY) { this.coordY = coordY; }
+
+    // Aliases para compatibilidad con cálculos geométricos
+    public double getX() { return coordX; }
+    public void setX(double x) { this.coordX = x; }
+
+    public double getY() { return coordY; }
+    public void setY(double y) { this.coordY = y; }
 
     @Override
     public String toString() {

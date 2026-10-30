@@ -25,14 +25,16 @@ public class App extends Application {
         FXMLLoader loader = new FXMLLoader(
             getClass().getResource("/fxml/login.fxml")
         );
-        Scene scene = new Scene(loader.load(), 800, 600);
+        Scene scene = new Scene(loader.load(), 960, 640);
         scene.getStylesheets().add(
             getClass().getResource("/styles/main.css").toExternalForm()
         );
 
-        primaryStage.setTitle("SIGCAT - Sistema Catastral");
+        primaryStage.setTitle("SIGCAT — Sistema Catastral Multipropósito (Sincelejo, Sucre)");
         primaryStage.setScene(scene);
-        primaryStage.setResizable(false);
+        primaryStage.setMinWidth(1024);
+        primaryStage.setMinHeight(700);
+        primaryStage.setMaximized(true);
         primaryStage.show();
     }
 

@@ -15,6 +15,27 @@ import java.util.List;
 public class VerticeDAO {
 
     /**
+     * Inserta una lista de vértices en una transacción activa.
+     */
+    public void guardarVerticesTransaccional(Connection conn, int predioId, List<Vertice> vertices) throws SQLException {
+        if (vertices == null || vertices.isEmpty()) {
+            return;
+        }
+        String sql = "INSERT INTO vertices (id_predio, orden, coord_x, coord_y) VALUES (?, ?, ?, ?)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            int orden = 1;
+            for (Vertice v : vertices) {
+                ps.setInt(1, predioId);
+                ps.setInt(2, v.getOrden() > 0 ? v.getOrden() : orden++);
+                ps.setDouble(3, v.getCoordX());
+                ps.setDouble(4, v.getCoordY());
+                ps.addBatch();
+            }
+            ps.executeBatch();
+        }
+    }
+
+    /**
      * Inserta un vértice asociado a un predio.
      */
     public void insertar(Connection conn, Vertice vertice) throws SQLException {
@@ -36,7 +57,7 @@ public class VerticeDAO {
         String sql = "SELECT * FROM vertices WHERE id_predio = ? ORDER BY orden";
         List<Vertice> resultado = new ArrayList<>();
 
-        Connection conn = DatabaseConnection.getInstance().getConnection();
+        Connection conn = DatabaseConnection.getConnection();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, idPredio);
 
@@ -55,7 +76,11 @@ public class VerticeDAO {
             rs.getDouble("coord_x"),
             rs.getDouble("coord_y")
         );
-        v.setId(rs.getInt("id_vertice"));
+        try {
+            v.setId(rs.getInt("id_vertice"));
+        } catch (SQLException e) {
+            v.setId(rs.getInt("id"));
+        }
         return v;
     }
 }

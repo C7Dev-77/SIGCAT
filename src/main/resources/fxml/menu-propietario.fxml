@@ -3,36 +3,91 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.VBox?>
 
 <!--
-    Vista del menú del Propietario - SIGCAT
-    Responsable: Leider Barreto (UI/UX)
+    Vista de Panel Principal del Propietario y Mis Predios - SIGCAT Hito 2
     Controlador: com.sigcat.controllers.MenuPropietarioController
 -->
-<VBox alignment="CENTER" spacing="20.0"
-      xmlns="http://javafx.com/javafx/17"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.sigcat.controllers.MenuPropietarioController"
-      styleClass="menu-root"
-      prefWidth="800" prefHeight="600">
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.sigcat.controllers.MenuPropietarioController"
+            styleClass="menu-root"
+            prefWidth="1200.0" prefHeight="750.0">
 
-    <padding>
-        <Insets top="60.0" right="80.0" bottom="60.0" left="80.0"/>
-    </padding>
+    <!-- BARRA DE NAVEGACIÓN DEL PROPIETARIO -->
+    <top>
+        <HBox alignment="CENTER_LEFT" spacing="18.0" styleClass="top-navbar">
+            <padding>
+                <Insets bottom="14.0" left="24.0" right="24.0" top="14.0"/>
+            </padding>
+            <VBox spacing="2.0">
+                <Label styleClass="navbar-title" text="SIGCAT — Portal del Propietario Catastral"/>
+                <Label fx:id="lblBienvenidaPropietario" styleClass="navbar-subtitle" text="Gestión de Predios y Estado de Trámites en Sincelejo, Sucre"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button mnemonicParsing="false" onAction="#irADibujarNuevoPredio" styleClass="btn-primary-lg" text="➕ Radicar / Dibujar Nuevo Predio"/>
+            <Button mnemonicParsing="false" onAction="#verPredioEnMapa" styleClass="btn-secondary" text="🗺️ Ver en Mapa"/>
+            <Button mnemonicParsing="false" onAction="#cargarMisPredios" styleClass="btn-secondary" text="🔄 Actualizar"/>
+            <Button mnemonicParsing="false" onAction="#cerrarSesion" styleClass="btn-outline" text="🚪 Salir"/>
+        </HBox>
+    </top>
 
-    <Label text="SIGCAT" styleClass="login-title"/>
-    <Label text="Panel del Propietario" styleClass="login-subtitle"/>
+    <!-- CONTENIDO CENTRAL: RESUMEN Y TABLA "MIS PREDIOS" -->
+    <center>
+        <VBox spacing="16.0">
+            <padding>
+                <Insets bottom="24.0" left="24.0" right="24.0" top="18.0"/>
+            </padding>
 
-    <Label fx:id="lblBienvenida" styleClass="menu-welcome"/>
+            <HBox spacing="18.0">
+                <VBox styleClass="kpi-card-neutral" prefWidth="230.0">
+                    <Label styleClass="kpi-title" text="TOTAL RADICADOS"/>
+                    <Label fx:id="lblTotalPredios" styleClass="kpi-number" text="0"/>
+                </VBox>
+                <VBox styleClass="kpi-card-success" prefWidth="230.0">
+                    <Label styleClass="kpi-title" text="APROBADOS"/>
+                    <Label fx:id="lblTotalAprobados" styleClass="kpi-number" text="0"/>
+                </VBox>
+                <VBox styleClass="kpi-card-warning" prefWidth="230.0">
+                    <Label styleClass="kpi-title" text="EN REVISIÓN (PENDIENTES)"/>
+                    <Label fx:id="lblTotalPendientes" styleClass="kpi-number" text="0"/>
+                </VBox>
+                <VBox styleClass="kpi-card-danger" prefWidth="230.0">
+                    <Label styleClass="kpi-title" text="RECHAZADOS"/>
+                    <Label fx:id="lblTotalRechazados" styleClass="kpi-number" text="0"/>
+                </VBox>
+            </HBox>
 
-    <Button text="📋  Registrar nuevo predio"
-            onAction="#irADibujar"
-            styleClass="btn-primary"
-            maxWidth="320"/>
+            <Separator/>
 
-    <Button text="Cerrar sesión"
-            onAction="#handleCerrarSesion"
-            styleClass="btn-secondary"
-            maxWidth="320"/>
-</VBox>
+            <HBox alignment="CENTER_LEFT">
+                <Label styleClass="section-header" text="Mis Predios y Estado de Solicitudes"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="lblEstadoPropietario" styleClass="navbar-subtitle" text="Listado actualizado desde la base catastral."/>
+            </HBox>
+
+            <TableView fx:id="tablaMisPredios" VBox.vgrow="ALWAYS" styleClass="modern-table">
+                <columns>
+                    <TableColumn fx:id="colCodigoCatastral" prefWidth="140.0" text="Código Catastral"/>
+                    <TableColumn fx:id="colNombrePredio" prefWidth="210.0" text="Nombre del Predio"/>
+                    <TableColumn fx:id="colDireccionPredio" prefWidth="250.0" text="Dirección Urbana"/>
+                    <TableColumn fx:id="colUsoSuelo" prefWidth="130.0" text="Uso Suelo"/>
+                    <TableColumn fx:id="colAreaPredio" prefWidth="120.0" text="Área (m²)"/>
+                    <TableColumn fx:id="colEstadoPredio" prefWidth="130.0" text="Estado"/>
+                    <TableColumn fx:id="colObservaciones" prefWidth="280.0" text="Dictamen / Observaciones del Funcionario"/>
+                </columns>
+                <columnResizePolicy>
+                    <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                </columnResizePolicy>
+            </TableView>
+        </VBox>
+    </center>
+
+</BorderPane>

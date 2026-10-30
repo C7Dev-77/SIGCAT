@@ -1,141 +1,326 @@
-/* ================================================================
-   main.css - Estilos base de SIGCAT
-   Responsable: Leider Barreto (UI/UX)
-   ================================================================ */
+/* ==========================================================================
+   SIGCAT — Sistema de Información Geográfica y Catastral (Sincelejo, Sucre)
+   Paleta Institucional Oscura / Moderna para JavaFX 21
+   ========================================================================== */
 
-/* ─── Variables de color ─────────────────────────────────────── */
 .root {
-    -fx-font-family: "Segoe UI", Arial, sans-serif;
-    -fx-background-color: #1a1a2e;
+    -fx-font-family: "Segoe UI", "Inter", "System", sans-serif;
+    -fx-background-color: #0f172a;
+    -fx-font-size: 13px;
 }
 
-/* ─── Contenedor principal del login ────────────────────────── */
-.login-root {
-    -fx-background-color: #1a1a2e;
+.root-pane, .auth-root, .login-root {
+    -fx-background-color: #0f172a;
+    -fx-font-family: "Segoe UI", "Inter", "System", sans-serif;
+    -fx-font-size: 13px;
 }
 
-/* ─── Título principal ───────────────────────────────────────── */
-.login-title {
-    -fx-font-size: 42px;
+/* BARRA SUPERIOR */
+.top-navbar {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 0 0 1 0;
+}
+
+.navbar-title {
+    -fx-text-fill: #f8fafc;
+    -fx-font-size: 17px;
     -fx-font-weight: bold;
-    -fx-text-fill: #e94560;
-    -fx-effect: dropshadow(gaussian, #e94560, 12, 0.4, 0, 0);
 }
 
-/* ─── Subtítulo ──────────────────────────────────────────────── */
-.login-subtitle {
-    -fx-font-size: 14px;
-    -fx-text-fill: #a0a0c0;
+.navbar-subtitle {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12px;
 }
 
-/* ─── Etiqueta de campo ──────────────────────────────────────── */
+/* TARJETAS DE AUTENTICACIÓN Y PANELES LATERALES */
+.auth-hero-panel {
+    -fx-background-color: linear-gradient(to bottom right, #1e3a8a, #0f172a);
+    -fx-background-radius: 14 0 0 14;
+    -fx-border-color: #334155;
+    -fx-border-width: 1 0 1 1;
+    -fx-border-radius: 14 0 0 14;
+}
+
+.auth-form-card {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 14;
+    -fx-border-color: #334155;
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.45), 18, 0, 0, 6);
+}
+
+.hero-badge {
+    -fx-background-color: rgba(59, 130, 246, 0.2);
+    -fx-text-fill: #60a5fa;
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 6;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.hero-title {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+}
+
+.hero-description {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-size: 13.5px;
+}
+
+.sidebar-card {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 0 0 0 1;
+}
+
+.section-header {
+    -fx-text-fill: #f1f5f9;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
 .field-label {
+    -fx-text-fill: #cbd5e1;
     -fx-font-size: 12px;
-    -fx-text-fill: #a0a0c0;
-}
-
-/* ─── Campos de texto ────────────────────────────────────────── */
-.login-field {
-    -fx-background-color: #16213e;
-    -fx-text-fill: #ffffff;
-    -fx-prompt-text-fill: #555577;
-    -fx-border-color: #0f3460;
-    -fx-border-width: 1px;
-    -fx-border-radius: 6px;
-    -fx-background-radius: 6px;
-    -fx-padding: 10px 14px;
-    -fx-font-size: 14px;
-}
-
-.login-field:focused {
-    -fx-border-color: #e94560;
-    -fx-border-width: 1.5px;
-}
-
-/* ─── Botón primario ─────────────────────────────────────────── */
-.btn-primary {
-    -fx-background-color: #e94560;
-    -fx-text-fill: #ffffff;
-    -fx-font-size: 14px;
     -fx-font-weight: bold;
-    -fx-padding: 12px 24px;
-    -fx-background-radius: 6px;
-    -fx-cursor: hand;
 }
 
-.btn-primary:hover {
-    -fx-background-color: #c73652;
-    -fx-effect: dropshadow(gaussian, #e94560, 8, 0.3, 0, 0);
+/* INPUTS Y COMBOBOX */
+.text-input, .combo-input, .text-area-input, .login-field {
+    -fx-background-color: #0f172a;
+    -fx-text-fill: #f8fafc;
+    -fx-prompt-text-fill: #64748b;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 12 8 12;
 }
 
-/* ─── Etiqueta de error ──────────────────────────────────────── */
-.error-label {
-    -fx-text-fill: #e94560;
-    -fx-font-size: 12px;
-    -fx-font-style: italic;
+.text-input:focused, .combo-input:focused, .text-area-input:focused, .login-field:focused {
+    -fx-border-color: #3b82f6;
+    -fx-border-width: 1.5;
 }
 
-/* ================================================================
-   Estilos de los menús de rol (Propietario / Funcionario)
-   Leider Barreto — Fase 1
-   ================================================================ */
-
-.menu-root {
-    -fx-background-color: #1a1a2e;
+.text-area-input .content {
+    -fx-background-color: #0f172a;
 }
 
-.menu-welcome {
+.separator *.line {
+    -fx-border-style: solid;
+    -fx-border-width: 0.5px;
+    -fx-border-color: #334155;
+}
+
+/* CAJAS DE MÉTRICAS SHOELACE */
+.metric-box {
+    -fx-background-color: #0f172a;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 10;
+}
+
+.metric-inline-box {
+    -fx-background-color: #0f172a;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 8 12 8 12;
+}
+
+.metric-title {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+}
+
+.metric-value-primary {
+    -fx-text-fill: #38bdf8;
     -fx-font-size: 18px;
     -fx-font-weight: bold;
+}
+
+.metric-value-secondary {
+    -fx-text-fill: #a78bfa;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.metric-badge {
+    -fx-background-color: #2563eb;
     -fx-text-fill: #ffffff;
-    -fx-padding: 10 0 10 0;
+    -fx-font-weight: bold;
+    -fx-padding: 2 10 2 10;
+    -fx-background-radius: 12;
 }
 
-/* ================================================================
-   Estilos del Canvas de Dibujo
-   Leider Barreto — Fase 2
-   ================================================================ */
-
-.dibujo-root {
-    -fx-background-color: #0d0d1a;
+/* TARJETAS KPI */
+.kpi-card-neutral, .kpi-card-success, .kpi-card-warning, .kpi-card-danger {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 14 18 14 18;
+    -fx-border-width: 0 0 0 4;
 }
 
-.dibujo-toolbar {
-    -fx-background-color: #16213e;
-    -fx-border-color: #0f3460;
-    -fx-border-width: 1px 0 0 0;
+.kpi-card-neutral { -fx-border-color: #3b82f6; }
+.kpi-card-success { -fx-border-color: #22c55e; }
+.kpi-card-warning { -fx-border-color: #f59e0b; }
+.kpi-card-danger  { -fx-border-color: #ef4444; }
+
+.kpi-title {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
 }
 
-.dibujo-info {
-    -fx-text-fill: #a0a0c0;
-    -fx-font-size: 13px;
+.kpi-number {
+    -fx-text-fill: #f8fafc;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
 }
 
-/* ─── Botón secundario ───────────────────────────────────────── */
+/* BOTONES */
+.btn-primary-lg, .btn-primary {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-padding: 10 18 10 18;
+    -fx-background-radius: 7;
+    -fx-cursor: hand;
+}
+.btn-primary-lg:hover, .btn-primary:hover { -fx-background-color: #1d4ed8; }
+.btn-primary-lg:disabled, .btn-primary:disabled { -fx-background-color: #334155; -fx-text-fill: #64748b; }
+
 .btn-secondary {
-    -fx-background-color: #0f3460;
+    -fx-background-color: #334155;
+    -fx-text-fill: #f1f5f9;
+    -fx-font-weight: bold;
+    -fx-padding: 8 14 8 14;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.btn-secondary:hover { -fx-background-color: #475569; }
+
+.btn-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: #64748b;
+    -fx-text-fill: #e2e8f0;
+    -fx-padding: 7 14 7 14;
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+}
+.btn-outline:hover { -fx-background-color: #334155; }
+
+.btn-warning {
+    -fx-background-color: #d97706;
     -fx-text-fill: #ffffff;
-    -fx-font-size: 13px;
-    -fx-padding: 8px 18px;
-    -fx-background-radius: 6px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 6;
     -fx-cursor: hand;
 }
 
-.btn-secondary:hover {
-    -fx-background-color: #1a4a80;
-    -fx-effect: dropshadow(gaussian, #0f3460, 6, 0.3, 0, 0);
+.btn-danger-outline {
+    -fx-background-color: transparent;
+    -fx-border-color: #ef4444;
+    -fx-text-fill: #f87171;
+    -fx-font-weight: bold;
+    -fx-padding: 8 12 8 12;
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
 }
 
-/* Badges de estado (tabla del Funcionario) */
-.badge-estado {
-    -fx-padding: 4 12 4 12;
-    -fx-background-radius: 12;
+.btn-success-lg {
+    -fx-background-color: #16a34a;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-padding: 9 16 9 16;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.btn-success-lg:hover { -fx-background-color: #15803d; }
+
+.btn-danger-lg {
+    -fx-background-color: #dc2626;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-padding: 9 16 9 16;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.btn-danger-lg:hover { -fx-background-color: #b91c1c; }
+
+/* TABLAS Y BARRA DE ESTADO */
+.modern-table {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.modern-table .column-header-background {
+    -fx-background-color: #0f172a;
+}
+
+.modern-table .column-header .label {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-weight: bold;
+}
+
+.modern-table .table-row-cell {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 0 0 0.5 0;
+}
+
+.modern-table .table-row-cell:selected {
+    -fx-background-color: #1d4ed8;
+}
+
+.modern-table .table-cell {
+    -fx-text-fill: #f1f5f9;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 8;
+}
+
+.status-bar, .dictamen-panel {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+    -fx-border-width: 1 0 0 0;
+}
+
+.status-tag {
+    -fx-text-fill: #94a3b8;
+    -fx-font-weight: bold;
+    -fx-font-size: 11px;
+}
+
+.auth-link {
+    -fx-text-fill: #60a5fa;
+    -fx-font-weight: bold;
+    -fx-cursor: hand;
+    -fx-underline: true;
+}
+
+.feedback-label, .error-label {
+    -fx-text-fill: #ef4444;
     -fx-font-size: 12px;
     -fx-font-weight: bold;
-    -fx-text-fill: white;
-    -fx-alignment: center;
 }
 
-.badge-pendiente { -fx-background-color: #f0a500; }
-.badge-aprobado { -fx-background-color: #4caf50; }
-.badge-rechazado { -fx-background-color: #e94560; }
+.feedback-success-label {
+    -fx-text-fill: #22c55e;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-background-color: rgba(34, 197, 94, 0.15);
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 6;
+    -fx-border-color: #22c55e;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+}

@@ -14,10 +14,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Pruebas unitarias de UsuarioDAO, cubriendo los casos CP-09 a CP-12
- * de la matriz de casos de prueba del Login.
+ * de la matriz de casos de prueba del Login y validación de autoregistro.
  *
  * Responsable: José Sánchez (QA)
- * Actualizado por: Cristian Morales (Arquitecto) — Pruebas BCrypt (RNF-01)
+ * Actualizado por: Cristian Morales (Arquitecto) — Pruebas BCrypt (RNF-01) y Autoregistro
  */
 class UsuarioDAOTest {
 
@@ -31,27 +31,27 @@ class UsuarioDAOTest {
     }
 
     @Test
-    void autenticarConCredencialesValidasDebeRetornarUsuario() throws SQLException {
+    void autenticarConCredencialesValidasDebeRetornarUsuario() {
         // CP-09
-        Optional<Usuario> resultado = usuarioDAO.autenticar("2002", "123");
+        Usuario resultado = usuarioDAO.autenticar("2002", "123");
 
-        assertTrue(resultado.isPresent(), "Debería autenticar con credenciales válidas");
-        assertEquals(Usuario.Rol.PROPIETARIO, resultado.get().getRol());
+        assertNotNull(resultado, "Debería autenticar con credenciales válidas");
+        assertEquals("PROPIETARIO", resultado.getRol());
     }
 
     @Test
-    void autenticarConPasswordIncorrectaDebeRetornarVacio() throws SQLException {
+    void autenticarConPasswordIncorrectaDebeRetornarVacio() {
         // CP-10
-        Optional<Usuario> resultado = usuarioDAO.autenticar("2002", "password_incorrecta");
+        Usuario resultado = usuarioDAO.autenticar("2002", "password_incorrecta");
 
-        assertTrue(resultado.isEmpty(), "No debería autenticar con contraseña incorrecta");
+        assertNull(resultado, "No debería autenticar con contraseña incorrecta");
     }
 
     @Test
-    void autenticarConDocumentoInexistenteDebeRetornarVacio() throws SQLException {
-        Optional<Usuario> resultado = usuarioDAO.autenticar("99999", "123");
+    void autenticarConDocumentoInexistenteDebeRetornarVacio() {
+        Usuario resultado = usuarioDAO.autenticar("99999", "123");
 
-        assertTrue(resultado.isEmpty(), "No debería autenticar con documento inexistente");
+        assertNull(resultado, "No debería autenticar con documento inexistente");
     }
 
     @Test
@@ -60,7 +60,7 @@ class UsuarioDAOTest {
         Optional<Usuario> resultado = usuarioDAO.buscarPorId(1);
 
         assertTrue(resultado.isPresent(), "Debería encontrar el usuario con id 1");
-        assertEquals(Usuario.Rol.FUNCIONARIO, resultado.get().getRol());
+        assertEquals("FUNCIONARIO", resultado.get().getRol());
     }
 
     @Test
@@ -69,6 +69,29 @@ class UsuarioDAOTest {
         Optional<Usuario> resultado = usuarioDAO.buscarPorId(9999);
 
         assertTrue(resultado.isEmpty(), "No debería encontrar un usuario con id inexistente");
+    }
+
+    @Test
+    void existeDocumentoDebeRetornarTrueParaUsuarioRegistrado() {
+        assertTrue(usuarioDAO.existeDocumento("1001"), "Documento 1001 semilla debe existir");
+        assertTrue(usuarioDAO.existeDocumento("2002"), "Documento 2002 semilla debe existir");
+        assertFalse(usuarioDAO.existeDocumento("88888888"), "Documento inexistente debe retornar false");
+    }
+
+    @Test
+    void registrarPropietarioNuevoYAutenticar() {
+        String docUnico = "9900" + (System.currentTimeMillis() % 100000);
+        int id = usuarioDAO.registrarPropietario(docUnico, "Propietario Test", "claveSegura123");
+        assertTrue(id > 0, "El ID retornado debe ser positivo");
+
+        Usuario auth = usuarioDAO.autenticar(docUnico, "claveSegura123");
+        assertNotNull(auth, "El nuevo propietario debe poder autenticarse");
+        assertEquals("Propietario Test", auth.getNombre());
+        assertEquals("PROPIETARIO", auth.getRol());
+
+        // Documento ya existe, registrar de nuevo debe retornar -1
+        int idDuplicado = usuarioDAO.registrarPropietario(docUnico, "Otro Nombre", "otraClave");
+        assertEquals(-1, idDuplicado, "No debe permitir documentos duplicados");
     }
 
     // ─── Pruebas nuevas para BCrypt (RNF-01) ───

@@ -1,54 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.geometry.Insets?>
 
-<!--
-    Vista de Login - SIGCAT
-    Responsable: Leider Barreto (UI/UX)
-    Controlador: com.sigcat.controllers.LoginController
--->
-<VBox xmlns="http://javafx.com/javafx/17"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.sigcat.controllers.LoginController"
-      alignment="CENTER"
-      spacing="16"
-      prefWidth="800"
-      prefHeight="600"
-      styleClass="login-root">
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.sigcat.controllers.LoginController"
+            prefHeight="640.0" prefWidth="960.0"
+            styleClass="auth-root">
+    <center>
+        <HBox alignment="CENTER" spacing="0.0">
+            <!-- PANEL INFORMATIVO IZQUIERDO -->
+            <VBox alignment="CENTER_LEFT" prefWidth="440.0" spacing="18.0" styleClass="auth-hero-panel">
+                <padding>
+                    <Insets bottom="40.0" left="40.0" right="40.0" top="40.0"/>
+                </padding>
+                <Label styleClass="hero-badge" text="CATASTRO MULTIPROPÓSITO — SUCRE"/>
+                <Label styleClass="hero-title" text="SIGCAT Sincelejo" wrapText="true"/>
+                <Label styleClass="hero-description"
+                       text="Sistema de Información Geográfica y Catastral con validación topológica de solapamientos, algoritmo métrico de Gauss (Shoelace) y cartografía OpenStreetMap nativa."
+                       wrapText="true"/>
+                <Separator/>
+                <Label styleClass="navbar-subtitle" text="✔ Código DANE Oficial: 70001"/>
+                <Label styleClass="navbar-subtitle" text="✔ Seguridad criptográfica BCrypt"/>
+                <Label styleClass="navbar-subtitle" text="✔ Trazabilidad de auditoría técnica"/>
+            </VBox>
 
-    <padding>
-        <Insets top="80" right="200" bottom="80" left="200"/>
-    </padding>
+            <!-- TARJETA DE LOGIN DERECHA -->
+            <VBox alignment="CENTER" prefWidth="440.0" spacing="18.0" styleClass="auth-form-card">
+                <padding>
+                    <Insets bottom="44.0" left="44.0" right="44.0" top="44.0"/>
+                </padding>
 
-    <!-- Título -->
-    <Label text="SIGCAT" styleClass="login-title"/>
-    <Label text="Sistema de Registro Catastral" styleClass="login-subtitle"/>
+                <VBox alignment="CENTER_LEFT" spacing="4.0">
+                    <Label styleClass="section-header" text="Iniciar Sesión"/>
+                    <Label styleClass="navbar-subtitle" text="Ingrese sus credenciales para acceder a la plataforma"/>
+                </VBox>
 
-    <!-- Campo: Documento -->
-    <Label text="Número de Documento" styleClass="field-label"/>
-    <TextField fx:id="txtDocumento"
-               promptText="Ingrese su número de documento"
-               styleClass="login-field"
-               maxWidth="360"/>
+                <VBox spacing="6.0">
+                    <Label styleClass="field-label" text="Documento de Identidad o Usuario"/>
+                    <TextField fx:id="txtDocumento" promptText="Ej: 1102800000 o admin" styleClass="text-input"/>
+                </VBox>
 
-    <!-- Campo: Contraseña -->
-    <Label text="Contraseña" styleClass="field-label"/>
-    <PasswordField fx:id="txtPassword"
-                   promptText="Ingrese su contraseña"
-                   styleClass="login-field"
-                   maxWidth="360"/>
+                <VBox spacing="6.0">
+                    <Label styleClass="field-label" text="Contraseña"/>
+                    <PasswordField fx:id="txtPassword" promptText="••••••••" styleClass="text-input"/>
+                </VBox>
 
-    <!-- Mensaje de error -->
-    <Label fx:id="lblError" styleClass="error-label" wrapText="true"/>
+                <Label fx:id="lblMensajeExito" styleClass="feedback-success-label" wrapText="true" visible="false" managed="false"/>
+                <Label fx:id="lblErrorLogin" styleClass="feedback-label" wrapText="true"/>
 
-    <!-- Botón Ingresar -->
-    <Button fx:id="btnIngresar"
-            text="Ingresar"
-            onAction="#onIngresar"
-            styleClass="btn-primary"
-            defaultButton="true"
-            maxWidth="360"/>
+                <Button fx:id="btnIngresar" defaultButton="true" maxWidth="1.7976931348623157E308"
+                        mnemonicParsing="false" onAction="#iniciarSesion" styleClass="btn-primary-lg" text="Ingresar al Sistema"/>
 
-</VBox>
+                <Separator/>
+
+                <HBox alignment="CENTER" spacing="6.0">
+                    <Label styleClass="navbar-subtitle" text="¿No tienes cuenta de propietario?"/>
+                    <Hyperlink onAction="#irARegistro" styleClass="auth-link" text="Regístrate aquí"/>
+                </HBox>
+            </VBox>
+        </HBox>
+    </center>
+</BorderPane>
