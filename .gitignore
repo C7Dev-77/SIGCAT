@@ -10,4 +10,6 @@ target/
 .classpath
 *.log
 *.db
+*.db-shm
+*.db-wal
 
