@@ -117,4 +117,14 @@ class PredioDAOTest {
         assertNotNull(encontrado.getVertices(), "Los vértices no deberían ser null");
         assertEquals(4, encontrado.getVertices().size(), "Debe traer los 4 vértices del predio aprobado");
     }
+
+    @Test
+    void obtenerPorEstadoTodasLasSolicitudesDebeRetornarTodos() {
+        List<Predio> todos = predioDAO.obtenerTodos();
+        List<Predio> filtroTodas = predioDAO.obtenerPorEstado("TODAS LAS SOLICITUDES");
+        List<Predio> filtroTodos = predioDAO.obtenerPorEstado("TODOS");
+
+        assertEquals(todos.size(), filtroTodas.size(), "Debe coincidir con la lista completa de predios");
+        assertEquals(todos.size(), filtroTodos.size(), "Debe coincidir con la lista completa de predios");
+    }
 }

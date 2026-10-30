@@ -196,7 +196,10 @@ public class PredioDAO {
     }
 
     public List<Predio> obtenerPorEstado(String estado) {
-        if (estado == null || estado.trim().isEmpty() || estado.toUpperCase().startsWith("TODO")) {
+        if (estado == null || estado.trim().isEmpty() ||
+            estado.toUpperCase().contains("TODO") ||
+            estado.toUpperCase().contains("TODA") ||
+            estado.equalsIgnoreCase("ALL")) {
             return obtenerTodos();
         }
 
