@@ -1,16 +1,18 @@
 package com.sigcat.models;
 
 /**
- * Modelo de dominio que representa a un usuario del sistema.
- * Roles posibles: PROPIETARIO, FUNCIONARIO.
+ * Modelo de dominio que representa a un usuario del sistema SIGCAT.
+ * Roles posibles: PROPIETARIO, FUNCIONARIO, ADMIN.
  *
  * Responsable: Aldo Ibañez (Persistencia)
+ * Actualizado: Evolución v2.0 — Perfil de Propietario y Autenticación Supabase
  */
 public class Usuario {
 
     public enum Rol {
         PROPIETARIO,
-        FUNCIONARIO
+        FUNCIONARIO,
+        ADMIN
     }
 
     private int id;
@@ -18,6 +20,9 @@ public class Usuario {
     private String nombre;
     private String password;
     private Rol rol = Rol.PROPIETARIO;
+    private String email;
+    private String telefono;
+    private String avatarUrl;
 
     public Usuario() {}
 
@@ -80,6 +85,15 @@ public class Usuario {
             }
         }
     }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getTelefono() { return telefono; }
+    public void setTelefono(String telefono) { this.telefono = telefono; }
+
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
 
     @Override
     public String toString() {

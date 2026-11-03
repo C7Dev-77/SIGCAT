@@ -136,4 +136,32 @@ class UsuarioDAOTest {
         assertFalse(PasswordUtil.checkPassword(wrongPassword, hash),
             "checkPassword debe retornar false para contraseña incorrecta");
     }
+
+    @Test
+    void actualizarPerfilCompletoDebeModificarEmailTelefonoYAvatar() {
+        String docUnico = "8800" + (System.currentTimeMillis() % 100000);
+        int id = usuarioDAO.registrarPropietario(docUnico, "Ana Gomez", "claveOriginal123");
+        assertTrue(id > 0, "Usuario creado exitosamente");
+
+        boolean actualizado = usuarioDAO.actualizarPerfilCompleto(
+            id,
+            "Ana Gómez Editada",
+            "ana.gomez@sincelejo.gov.co",
+            "+57 300 123 4567",
+            "https://jrgawunaqyhwahfavfeg.supabase.co/storage/v1/object/public/avatares-usuarios/avatar_ana.png",
+            "nuevaClave999"
+        );
+        assertTrue(actualizado, "El perfil completo debe actualizarse correctamente");
+
+        // Autenticar con la nueva clave
+        Usuario modificado = usuarioDAO.autenticar(docUnico, "nuevaClave999");
+        assertNotNull(modificado, "Debe poder autenticarse con la nueva contraseña");
+        assertEquals("Ana Gómez Editada", modificado.getNombre());
+        assertEquals("ana.gomez@sincelejo.gov.co", modificado.getEmail());
+        assertEquals("+57 300 123 4567", modificado.getTelefono());
+        assertEquals("https://jrgawunaqyhwahfavfeg.supabase.co/storage/v1/object/public/avatares-usuarios/avatar_ana.png", modificado.getAvatarUrl());
+
+        // La clave vieja ya no debe funcionar
+        assertNull(usuarioDAO.autenticar(docUnico, "claveOriginal123"));
+    }
 }

@@ -8,8 +8,8 @@ import java.sql.*;
 import java.util.Optional;
 
 /**
- * DAO para la gestión de Usuarios (Autenticación, verificación de unicidad de documento
- * y registro autónomo de propietarios con hash BCrypt factor 12).
+ * DAO para la gestión de Usuarios (Autenticación, verificación de unicidad de documento,
+ * registro autónomo de propietarios con hash BCrypt factor 12 y administración de perfil).
  */
 public class UsuarioDAO {
 
@@ -169,7 +169,18 @@ public class UsuarioDAO {
      * Actualiza el nombre y/o contraseña de un usuario (Perfil de Propietario).
      */
     public boolean actualizarPerfil(int id, String nuevoNombre, String nuevaPasswordPlana) {
+        return actualizarPerfilCompleto(id, nuevoNombre, null, null, null, nuevaPasswordPlana);
+    }
+
+    /**
+     * Actualiza perfil extendido (nombre, correo, teléfono, avatar y contraseña opcional).
+     */
+    public boolean actualizarPerfilCompleto(int id, String nombre, String email, String telefono, String avatarUrl, String nuevaPasswordPlana) {
         StringBuilder sql = new StringBuilder("UPDATE usuarios SET nombre = ?");
+        if (email != null) sql.append(", email = ?");
+        if (telefono != null) sql.append(", telefono = ?");
+        if (avatarUrl != null) sql.append(", avatar_url = ?");
+
         String nuevoHash = null;
         if (nuevaPasswordPlana != null && !nuevaPasswordPlana.trim().isEmpty()) {
             nuevoHash = PasswordUtil.hashPassword(nuevaPasswordPlana.trim());
@@ -179,17 +190,20 @@ public class UsuarioDAO {
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
-            stmt.setString(1, nuevoNombre.trim());
+            int paramIndex = 1;
+            stmt.setString(paramIndex++, nombre != null ? nombre.trim() : "");
+            if (email != null) stmt.setString(paramIndex++, email.trim());
+            if (telefono != null) stmt.setString(paramIndex++, telefono.trim());
+            if (avatarUrl != null) stmt.setString(paramIndex++, avatarUrl.trim());
+
             if (nuevoHash != null) {
-                stmt.setString(2, nuevoHash);
-                stmt.setString(3, nuevoHash);
-                stmt.setInt(4, id);
-            } else {
-                stmt.setInt(2, id);
+                stmt.setString(paramIndex++, nuevoHash);
+                stmt.setString(paramIndex++, nuevoHash);
             }
+            stmt.setInt(paramIndex, id);
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
-            System.err.println("Error al actualizar perfil de usuario: " + e.getMessage());
+            System.err.println("Error al actualizar perfil completo de usuario: " + e.getMessage());
             return false;
         }
     }
@@ -212,6 +226,15 @@ public class UsuarioDAO {
         }
         u.setPasswordHash(storedHash);
         u.setRol(rs.getString("rol"));
+        try {
+            u.setEmail(rs.getString("email"));
+        } catch (SQLException ignored) {}
+        try {
+            u.setTelefono(rs.getString("telefono"));
+        } catch (SQLException ignored) {}
+        try {
+            u.setAvatarUrl(rs.getString("avatar_url"));
+        } catch (SQLException ignored) {}
         return u;
     }
 }

@@ -453,7 +453,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
     }
 
     /**
-     * Diálogo para que el propietario administre su cuenta (nombre y contraseña).
+     * Abre la vista integral de Perfil del Propietario y Centro Documental.
      */
     @FXML
     public void abrirMiPerfil(ActionEvent event) {
@@ -462,76 +462,24 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
             return;
         }
 
-        Dialog<ButtonType> dialog = new Dialog<>();
-        dialog.setTitle("Mi Perfil de Propietario — SIGCAT");
-        dialog.setHeaderText("Administración de Cuenta | Propietario Catastral");
-        configurarEstiloDialogo(dialog);
+        try {
+            detenerAutoRefresco();
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-propietario-perfil.fxml"));
+            Parent root = loader.load();
 
-        ButtonType btnGuardar = new ButtonType("💾 Actualizar Perfil", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(btnGuardar, ButtonType.CANCEL);
-
-        VBox form = new VBox(12);
-        form.setPadding(new Insets(18));
-        form.setPrefWidth(420);
-
-        Label lblDoc = new Label("Documento de Identidad (Cédula/NIT):");
-        lblDoc.setStyle("-fx-text-fill: #94a3b8; -fx-font-weight: bold;");
-        TextField txtDoc = new TextField(propietarioActual.getDocumento());
-        txtDoc.setDisable(true);
-        txtDoc.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #94a3b8; -fx-border-color: #334155; -fx-border-radius: 6;");
-
-        Label lblNombre = new Label("Nombre Completo *:");
-        lblNombre.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
-        TextField txtNombre = new TextField(propietarioActual.getNombre());
-        txtNombre.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
-
-        Label lblPass = new Label("Nueva Contraseña (dejar en blanco para no cambiar):");
-        lblPass.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
-        PasswordField txtPass = new PasswordField();
-        txtPass.setPromptText("Mínimo 4 caracteres");
-        txtPass.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
-
-        Label lblPassConf = new Label("Confirmar Nueva Contraseña:");
-        lblPassConf.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
-        PasswordField txtPassConf = new PasswordField();
-        txtPassConf.setPromptText("Repetir contraseña");
-        txtPassConf.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
-
-        form.getChildren().addAll(lblDoc, txtDoc, lblNombre, txtNombre, new Separator(), lblPass, txtPass, lblPassConf, txtPassConf);
-        dialog.getDialogPane().setContent(form);
-
-        Optional<ButtonType> res = dialog.showAndWait();
-        if (res.isPresent() && res.get() == btnGuardar) {
-            String nuevoNom = txtNombre.getText().trim();
-            String p1 = txtPass.getText().trim();
-            String p2 = txtPassConf.getText().trim();
-
-            if (nuevoNom.isEmpty()) {
-                mostrarEstado("El nombre no puede estar vacío.", "#ef4444");
-                return;
+            MenuPropietarioPerfilController controller = loader.getController();
+            if (controller != null) {
+                controller.setUsuario(propietarioActual);
             }
 
-            if (!p1.isEmpty()) {
-                if (p1.length() < 4) {
-                    mostrarEstado("La contraseña debe tener al menos 4 caracteres.", "#ef4444");
-                    return;
-                }
-                if (!p1.equals(p2)) {
-                    mostrarEstado("Las contraseñas no coinciden.", "#ef4444");
-                    return;
-                }
+            Stage stage = ViewNavigator.obtenerStage(event);
+            if (stage == null && tablaMisPredios != null && tablaMisPredios.getScene() != null) {
+                stage = (Stage) tablaMisPredios.getScene().getWindow();
             }
 
-            boolean ok = new UsuarioDAO().actualizarPerfil(propietarioActual.getId(), nuevoNom, p1.isEmpty() ? null : p1);
-            if (ok) {
-                propietarioActual.setNombre(nuevoNom);
-                if (lblBienvenidaPropietario != null) {
-                    lblBienvenidaPropietario.setText("Propietario: " + nuevoNom + " (Doc: " + propietarioActual.getDocumento() + ") — Sincelejo, Sucre");
-                }
-                mostrarEstado("✔ Perfil actualizado exitosamente.", "#22c55e");
-            } else {
-                mostrarEstado("Error al actualizar perfil en la base de datos.", "#ef4444");
-            }
+            ViewNavigator.cambiarVista(stage, root, "SIGCAT — Perfil de Propietario y Centro Documental");
+        } catch (IOException e) {
+            mostrarEstado("Error al abrir perfil y centro documental: " + e.getMessage(), "#ef4444");
         }
     }
 

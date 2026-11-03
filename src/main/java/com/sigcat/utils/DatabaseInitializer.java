@@ -44,6 +44,15 @@ public class DatabaseInitializer {
             try {
                 stmt.execute("ALTER TABLE usuarios ADD COLUMN password_hash TEXT DEFAULT ''");
             } catch (SQLException ignored) {}
+            try {
+                stmt.execute("ALTER TABLE usuarios ADD COLUMN email TEXT");
+            } catch (SQLException ignored) {}
+            try {
+                stmt.execute("ALTER TABLE usuarios ADD COLUMN telefono TEXT");
+            } catch (SQLException ignored) {}
+            try {
+                stmt.execute("ALTER TABLE usuarios ADD COLUMN avatar_url TEXT");
+            } catch (SQLException ignored) {}
 
             try {
                 stmt.execute("""
