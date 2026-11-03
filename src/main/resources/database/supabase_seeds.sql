@@ -38,3 +38,4 @@ VALUES
     ('70001-PUB-010', 'Catedral San Francisco de Asís','Cra 19A No. 19-27, Sincelejo','RELIGIOSO',      'PUBLICO', 'INSTITUCIONAL', 'Diócesis de Sincelejo',        'Patrimonio religioso urbano.'),
     ('70001-PUB-011', 'Terminal de Transportes de Sincelejo','Cra 12 No. 7-20, Sincelejo','VIAL',     'PUBLICO', 'VIAL',          'Terminal de Transportes S.A.', 'Infraestructura de transporte.')
 ON CONFLICT (codigo_catastral) DO NOTHING;
+

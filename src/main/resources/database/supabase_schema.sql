@@ -151,3 +151,4 @@ DROP TRIGGER IF EXISTS trg_usuarios_updated ON public.usuarios;
 CREATE TRIGGER trg_usuarios_updated
     BEFORE UPDATE ON public.usuarios
     FOR EACH ROW EXECUTE FUNCTION actualizar_timestamp();
+
