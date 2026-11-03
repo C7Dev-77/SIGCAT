@@ -85,6 +85,16 @@ public class DatabaseInitializer {
                 );
             """);
 
+            try {
+                stmt.execute("ALTER TABLE predios ADD COLUMN sincronizado INTEGER DEFAULT 0");
+            } catch (SQLException ignored) {}
+            try {
+                stmt.execute("ALTER TABLE predios ADD COLUMN id_remoto INTEGER DEFAULT 0");
+            } catch (SQLException ignored) {}
+            try {
+                stmt.execute("ALTER TABLE predios ADD COLUMN tipo TEXT DEFAULT 'PRIVADO'");
+            } catch (SQLException ignored) {}
+
             // ─── Tabla: vertices ───────────────────────────────────
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS vertices (

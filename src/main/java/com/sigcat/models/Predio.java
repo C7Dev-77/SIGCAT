@@ -34,6 +34,12 @@ public class Predio {
     private String fechaRevision;
     private String nombrePropietario;
 
+    // Campos Supabase y Sincronizacion
+    private String tipo = "PRIVADO";
+    private String reciboValidacionUrl;
+    private boolean sincronizado = false;
+    private int idRemoto = 0;
+
     public Predio() {
         this.fechaRegistro = LocalDate.now();
     }
@@ -101,6 +107,18 @@ public class Predio {
 
     public String getNombrePropietario() { return nombrePropietario; }
     public void setNombrePropietario(String nombrePropietario) { this.nombrePropietario = nombrePropietario; }
+
+    public String getTipo() { return tipo != null ? tipo : "PRIVADO"; }
+    public void setTipo(String tipo) { this.tipo = tipo; }
+
+    public String getReciboValidacionUrl() { return reciboValidacionUrl; }
+    public void setReciboValidacionUrl(String reciboValidacionUrl) { this.reciboValidacionUrl = reciboValidacionUrl; }
+
+    public boolean isSincronizado() { return sincronizado; }
+    public void setSincronizado(boolean sincronizado) { this.sincronizado = sincronizado; }
+
+    public int getIdRemoto() { return idRemoto; }
+    public void setIdRemoto(int idRemoto) { this.idRemoto = idRemoto; }
 
     @Override
     public String toString() {
