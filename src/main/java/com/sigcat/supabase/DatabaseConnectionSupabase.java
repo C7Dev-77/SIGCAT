@@ -69,6 +69,33 @@ public class DatabaseConnectionSupabase {
             """);
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_entidad ON public.audit_log(entidad, entidad_id);");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_fecha ON public.audit_log(fecha DESC);");
+
+            // Corrección de coordenadas de predios públicos para eliminar solapamiento (Parque Santander vs Catedral)
+            stmt.execute("""
+                UPDATE public.vertices v
+                SET longitud = new_c.longitud, latitud = new_c.latitud
+                FROM (VALUES 
+                    (1, -75.3981::float8, 9.3011::float8),
+                    (2, -75.3973::float8, 9.3011::float8),
+                    (3, -75.3973::float8, 9.3017::float8),
+                    (4, -75.3981::float8, 9.3017::float8)
+                ) AS new_c(orden, longitud, latitud)
+                JOIN public.predios p ON p.codigo_catastral = '70001-PUB-009'
+                WHERE v.id_predio = p.id AND v.orden = new_c.orden;
+            """);
+
+            stmt.execute("""
+                UPDATE public.vertices v
+                SET longitud = new_c.longitud, latitud = new_c.latitud
+                FROM (VALUES 
+                    (1, -75.3971::float8, 9.3019::float8),
+                    (2, -75.3963::float8, 9.3019::float8),
+                    (3, -75.3963::float8, 9.3025::float8),
+                    (4, -75.3971::float8, 9.3025::float8)
+                ) AS new_c(orden, longitud, latitud)
+                JOIN public.predios p ON p.codigo_catastral = '70001-PUB-010'
+                WHERE v.id_predio = p.id AND v.orden = new_c.orden;
+            """);
         } catch (SQLException e) {
             System.err.println("[SUPABASE] Aviso al verificar esquema: " + e.getMessage());
         }

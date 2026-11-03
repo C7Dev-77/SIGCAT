@@ -211,9 +211,9 @@ public class DatabaseInitializer {
             // Universidad de Sucre
             {{-75.3858, 9.3184}, {-75.3842, 9.3184}, {-75.3842, 9.3196}, {-75.3858, 9.3196}},
             // Parque Santander
-            {{-75.3979, 9.3012}, {-75.3971, 9.3012}, {-75.3971, 9.3018}, {-75.3979, 9.3018}},
+            {{-75.3981, 9.3011}, {-75.3973, 9.3011}, {-75.3973, 9.3017}, {-75.3981, 9.3017}},
             // Catedral San Francisco
-            {{-75.3974, 9.3017}, {-75.3966, 9.3017}, {-75.3966, 9.3023}, {-75.3974, 9.3023}},
+            {{-75.3971, 9.3019}, {-75.3963, 9.3019}, {-75.3963, 9.3025}, {-75.3971, 9.3025}},
             // Terminal de Transportes
             {{-75.4056, 9.2875}, {-75.4044, 9.2875}, {-75.4044, 9.2885}, {-75.4056, 9.2885}}
         };
@@ -241,16 +241,13 @@ public class DatabaseInitializer {
                             u.setInt(3, predioId);
                             u.executeUpdate();
                         }
-                        // Verificar si tiene vértices
-                        String chkVert = "SELECT 1 FROM vertices WHERE id_predio = ? LIMIT 1";
-                        try (PreparedStatement cv = conn.prepareStatement(chkVert)) {
-                            cv.setInt(1, predioId);
-                            try (ResultSet rsv = cv.executeQuery()) {
-                                if (!rsv.next()) {
-                                    insertarVerticesArray(conn, predioId, coords[i], insertVerticeSql);
-                                }
-                            }
+                        // Sincronizar vértices oficiales (asegura coordenadas corregidas sin solapamiento)
+                        String delVert = "DELETE FROM vertices WHERE id_predio = ?";
+                        try (PreparedStatement dv = conn.prepareStatement(delVert)) {
+                            dv.setInt(1, predioId);
+                            dv.executeUpdate();
                         }
+                        insertarVerticesArray(conn, predioId, coords[i], insertVerticeSql);
                         continue;
                     }
                 }
