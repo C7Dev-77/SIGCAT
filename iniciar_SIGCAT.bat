@@ -40,3 +40,4 @@ echo [AVISO] No se encontro el archivo JAR precompilado.
 echo Compilando y ejecutando con Maven Wrapper...
 call "%~dp0mvnw.cmd" javafx:run
 pause
+
