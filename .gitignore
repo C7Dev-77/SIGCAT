@@ -12,4 +12,7 @@ target/
 *.db
 *.db-shm
 *.db-wal
+# Variables de entorno con claves secretas — NUNCA subir a GitHub
+.env
+*.env
 
