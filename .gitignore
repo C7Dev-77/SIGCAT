@@ -1,6 +1,7 @@
 target/
 *.class
 *.jar
+!ejecutable/*.jar
 *.war
 .idea/
 *.iml
