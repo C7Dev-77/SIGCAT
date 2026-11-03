@@ -40,6 +40,7 @@
             <ComboBox fx:id="cmbSectorSincelejo" prefWidth="260.0" styleClass="combo-input"/>
             <Button mnemonicParsing="false" onAction="#centrarMapaEnSincelejo" styleClass="btn-secondary" text="📍 Centrar Sincelejo"/>
             <Button mnemonicParsing="false" onAction="#alternarCapaMapa" styleClass="btn-secondary" text="🗺️ Capa OSM / Cuadrícula"/>
+            <Button mnemonicParsing="false" onAction="#exportarMapaPNG" styleClass="btn-secondary" text="📸 Exportar Plano PNG"/>
             <Button mnemonicParsing="false" onAction="#volverAlMenu" styleClass="btn-outline" text="⬅ Volver al Panel"/>
         </HBox>
     </top>

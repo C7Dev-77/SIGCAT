@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS public.documentos (
     estado          TEXT DEFAULT 'PENDIENTE_REVISION'
                     CHECK (estado IN ('PENDIENTE_REVISION', 'APROBADO', 'RECHAZADO')),
     descripcion     TEXT,
+    hash_sha256     TEXT,
     subido_en       TIMESTAMPTZ DEFAULT NOW(),
     revisado_en     TIMESTAMPTZ,
     revisado_por    UUID REFERENCES public.usuarios(id)
@@ -151,4 +152,23 @@ DROP TRIGGER IF EXISTS trg_usuarios_updated ON public.usuarios;
 CREATE TRIGGER trg_usuarios_updated
     BEFORE UPDATE ON public.usuarios
     FOR EACH ROW EXECUTE FUNCTION actualizar_timestamp();
+
+-- ============================================================
+-- 9. TABLA: audit_log (Historial de Auditoría Catastral - Mejora #4)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.audit_log (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    entidad         TEXT NOT NULL,
+    entidad_id      TEXT NOT NULL,
+    accion          TEXT NOT NULL,
+    estado_anterior TEXT,
+    estado_nuevo    TEXT,
+    usuario_id      TEXT,
+    usuario_nombre  TEXT,
+    detalles        TEXT,
+    fecha           TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_entidad ON public.audit_log(entidad, entidad_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_fecha ON public.audit_log(fecha DESC);
 

@@ -358,8 +358,9 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
         );
         File archivo = fc.showOpenDialog(txtNombre != null ? txtNombre.getScene().getWindow() : null);
         if (archivo != null) {
-            if (archivo.length() > 5 * 1024 * 1024) {
-                mostrarEstadoPerfil("La imagen no debe superar los 5 MB.", "#ef4444");
+            com.sigcat.utils.FileValidator.ResultadoValidacion val = com.sigcat.utils.FileValidator.validarAvatar(archivo);
+            if (!val.valido()) {
+                mostrarEstadoPerfil(val.mensaje(), "#ef4444");
                 return;
             }
 
@@ -481,8 +482,9 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
             );
             File f = fc.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
             if (f != null) {
-                if (f.length() > 15 * 1024 * 1024) {
-                    Alert al = new Alert(Alert.AlertType.WARNING, "El archivo supera el límite de 15 MB.");
+                com.sigcat.utils.FileValidator.ResultadoValidacion val = com.sigcat.utils.FileValidator.validarDocumento(f);
+                if (!val.valido()) {
+                    Alert al = new Alert(Alert.AlertType.WARNING, val.mensaje());
                     configurarEstiloDialogo(al);
                     al.showAndWait();
                     return;
@@ -518,6 +520,9 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
                             tipoDoc,
                             desc
                     );
+
+                    // Auditoría del documento (Mejora #4)
+                    new com.sigcat.services.AuditService().auditarDocumentoSubido(doc, usuarioActual);
 
                     Platform.runLater(() -> {
                         if ("RECIBO_VALIDACION".equals(tipoDoc) || predioActivo.getReciboValidacionUrl() == null) {

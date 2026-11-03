@@ -20,6 +20,7 @@ public class DatabaseConnectionSupabase {
             .load();
 
     private static Connection connection;
+    private static boolean parchesAplicados = false;
 
     private DatabaseConnectionSupabase() {}
 
@@ -40,8 +41,37 @@ public class DatabaseConnectionSupabase {
 
             connection = DriverManager.getConnection(url, user, pass);
             System.out.println("[SUPABASE] Conexión establecida exitosamente con PostgreSQL en la nube.");
+
+            if (!parchesAplicados) {
+                parchesAplicados = true;
+                aplicarParchesSchema(connection);
+            }
         }
         return connection;
+    }
+
+    private static void aplicarParchesSchema(Connection conn) {
+        try (var stmt = conn.createStatement()) {
+            stmt.execute("ALTER TABLE public.documentos ADD COLUMN IF NOT EXISTS hash_sha256 TEXT;");
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS public.audit_log (
+                    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                    entidad         TEXT NOT NULL,
+                    entidad_id      TEXT NOT NULL,
+                    accion          TEXT NOT NULL,
+                    estado_anterior TEXT,
+                    estado_nuevo    TEXT,
+                    usuario_id      TEXT,
+                    usuario_nombre  TEXT,
+                    detalles        TEXT,
+                    fecha           TIMESTAMPTZ DEFAULT NOW()
+                );
+            """);
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_entidad ON public.audit_log(entidad, entidad_id);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_fecha ON public.audit_log(fecha DESC);");
+        } catch (SQLException e) {
+            System.err.println("[SUPABASE] Aviso al verificar esquema: " + e.getMessage());
+        }
     }
 
     /**

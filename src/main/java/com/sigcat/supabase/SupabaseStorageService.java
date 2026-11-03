@@ -83,6 +83,9 @@ public class SupabaseStorageService {
             DocumentoLegal doc = new DocumentoLegal(predioId, tipoDoc, archivo.getName(), storagePath, publicUrl);
             doc.setPropietarioId(propietarioId);
             doc.setDescripcion(descripcion);
+            try {
+                doc.setHashSha256(com.sigcat.security.DocumentoSecurityUtil.calcularSHA256(archivo));
+            } catch (Exception ignored) {}
 
             boolean guardado = documentoDAO.insertar(doc);
             if (!guardado) {
@@ -122,6 +125,30 @@ public class SupabaseStorageService {
             return supabaseUrl + "/storage/v1/object/public/" + BUCKET_AVATARES + "/" + storagePath;
         }
         throw new IOException("Error subiendo avatar (Status " + response.statusCode() + "): " + response.body());
+    }
+
+    /**
+     * Sube un arreglo de bytes directamente a cualquier bucket de Supabase Storage.
+     */
+    public String subirArchivoDirecto(String bucket, String storagePath, byte[] contenido, String mimeType) throws IOException, InterruptedException {
+        if (supabaseUrl == null || anonKey == null) {
+            return "https://local-offline/storage/" + bucket + "/" + storagePath;
+        }
+        String endpointUpload = supabaseUrl + "/storage/v1/object/" + bucket + "/" + storagePath;
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(endpointUpload))
+                .header("apikey", anonKey)
+                .header("Authorization", "Bearer " + anonKey)
+                .header("Content-Type", mimeType)
+                .header("x-upsert", "true")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(contenido))
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() == 200 || response.statusCode() == 201) {
+            return supabaseUrl + "/storage/v1/object/public/" + bucket + "/" + storagePath;
+        }
+        throw new IOException("Fallo al subir archivo directo a Supabase Storage (Status " + response.statusCode() + "): " + response.body());
     }
 
     /**

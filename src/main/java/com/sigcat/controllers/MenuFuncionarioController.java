@@ -1,6 +1,7 @@
 package com.sigcat.controllers;
 
 import com.sigcat.dao.PredioDAO;
+import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.dao.VerticeDAO;
 import com.sigcat.geometry.SolapamientoValidator;
 import com.sigcat.models.Predio;
@@ -9,6 +10,7 @@ import com.sigcat.utils.ViewNavigator;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -50,6 +52,8 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
 
     private final PredioDAO predioDAO = new PredioDAO();
     private final VerticeDAO verticeDAO = new VerticeDAO();
+    private final com.sigcat.services.AuditService auditService = new com.sigcat.services.AuditService();
+    private final com.sigcat.services.CertificadoCatastralService certService = new com.sigcat.services.CertificadoCatastralService();
     private final ObservableList<Predio> listaObservable = FXCollections.observableArrayList();
     private Usuario funcionario;
     private Timeline timerAutoRefresco;
@@ -68,6 +72,13 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
         cargarSolicitudesPorFiltro();
         actualizarContadoresDashboard();
         iniciarAutoRefresco();
+
+        // Suscripción Realtime Push (Mejora #1) y Monitoreo de Red (Mejora #10)
+        com.sigcat.supabase.SupabaseRealtimeService.getInstance().conectar();
+        com.sigcat.supabase.SupabaseRealtimeService.getInstance().registrarListenerPredios((event, record) -> {
+            Platform.runLater(this::refrescarSilencioso);
+        });
+        com.sigcat.services.NetworkStatusService.getInstance().iniciarMonitoreo(10);
     }
 
     private void iniciarAutoRefresco() {
@@ -246,9 +257,27 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
             }
         }
 
+        String estadoAnterior = seleccionado.getEstado();
         boolean exito = predioDAO.actualizarEstado(seleccionado.getId(), nuevoEstado, obs);
         if (exito) {
             if (txtObservacionesDictamen != null) txtObservacionesDictamen.clear();
+
+            // Auditoría formal de mutación catastral (Mejora #4)
+            auditService.auditarCambioEstadoPredio(seleccionado, estadoAnterior, nuevoEstado, funcionario, obs);
+
+            // Si es Aprobado: Generación automática de Certificado Catastral firmado con QR (Mejoras #3 y #9)
+            if ("APROBADO".equals(nuevoEstado)) {
+                new Thread(() -> {
+                    try {
+                        UsuarioDAO uDAO = new UsuarioDAO();
+                        Usuario prop = uDAO.buscarPorId(seleccionado.getPropietarioId()).orElse(null);
+                        certService.generarYGuardarCertificado(seleccionado, funcionario, prop);
+                        System.out.println("[CERTIFICADO] ✔ Certificado de Incorporación generado y firmado con éxito para " + seleccionado.getCodigoCatastral());
+                    } catch (Exception ex) {
+                        System.err.println("[CERTIFICADO] Aviso: No se pudo generar certificado digital: " + ex.getMessage());
+                    }
+                }).start();
+            }
 
             // 2. RESOLUCIÓN DE CONFLICTOS: Rechazo automático de solicitudes pendientes que queden invadidas
             int autoRechazados = 0;

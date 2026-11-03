@@ -25,8 +25,8 @@ public class DocumentoDAO {
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
                 INSERT INTO public.documentos 
-                    (id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion)
-                VALUES (?::uuid, ?, ?::uuid, ?, ?, ?, ?, ?, ?);
+                    (id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion, hash_sha256)
+                VALUES (?::uuid, ?, ?::uuid, ?, ?, ?, ?, ?, ?, ?);
             """;
 
             try (Connection conn = DatabaseConnectionSupabase.getConnection();
@@ -52,6 +52,7 @@ public class DocumentoDAO {
                 stmt.setString(7, doc.getStorageUrl());
                 stmt.setString(8, doc.getEstado() != null ? doc.getEstado() : "PENDIENTE_REVISION");
                 stmt.setString(9, doc.getDescripcion());
+                stmt.setString(10, doc.getHashSha256());
 
                 stmt.executeUpdate();
                 guardadoRemoto = true;
@@ -67,8 +68,8 @@ public class DocumentoDAO {
 
     private boolean insertarLocal(DocumentoLegal doc) {
         String sql = "INSERT OR REPLACE INTO documentos " +
-                     "(id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                     "(id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion, hash_sha256) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -82,6 +83,7 @@ public class DocumentoDAO {
             stmt.setString(7, doc.getStorageUrl());
             stmt.setString(8, doc.getEstado() != null ? doc.getEstado() : "PENDIENTE_REVISION");
             stmt.setString(9, doc.getDescripcion());
+            stmt.setString(10, doc.getHashSha256());
 
             return stmt.executeUpdate() > 0;
         } catch (SQLException e) {
@@ -96,7 +98,7 @@ public class DocumentoDAO {
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
                 SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo, 
-                       storage_path, storage_url, estado, descripcion, subido_en, revisado_en, revisado_por
+                       storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
                 FROM public.documentos
                 WHERE predio_id = ?
                 ORDER BY subido_en DESC;
@@ -140,7 +142,7 @@ public class DocumentoDAO {
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
                 SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo, 
-                       storage_path, storage_url, estado, descripcion, subido_en, revisado_en, revisado_por
+                       storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
                 FROM public.documentos
                 WHERE predio_id = ? AND tipo_documento = 'RECIBO_VALIDACION'
                 ORDER BY subido_en DESC
@@ -254,6 +256,9 @@ public class DocumentoDAO {
         d.setStorageUrl(rs.getString("storage_url"));
         d.setEstado(rs.getString("estado"));
         d.setDescripcion(rs.getString("descripcion"));
+        try {
+            d.setHashSha256(rs.getString("hash_sha256"));
+        } catch (SQLException ignored) {}
 
         Timestamp subido = rs.getTimestamp("subido_en");
         if (subido != null) d.setSubidoEn(subido.toLocalDateTime());
@@ -276,6 +281,9 @@ public class DocumentoDAO {
         d.setStorageUrl(rs.getString("storage_url"));
         d.setEstado(rs.getString("estado"));
         d.setDescripcion(rs.getString("descripcion"));
+        try {
+            d.setHashSha256(rs.getString("hash_sha256"));
+        } catch (SQLException ignored) {}
         return d;
     }
 }

@@ -89,6 +89,25 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         cargarDatosDashboard();
         verificarEstadoConexion();
 
+        // Suscripción a Realtime Push (Mejora #1) y Monitoreo de Red (Mejora #10)
+        com.sigcat.services.NetworkStatusService netService = com.sigcat.services.NetworkStatusService.getInstance();
+        netService.iniciarMonitoreo(8);
+        if (lblSyncStatus != null) {
+            lblSyncStatus.textProperty().bind(netService.estadoTextoProperty());
+            netService.onlineProperty().addListener((obs, oldV, isOnline) -> {
+                if (isOnline) {
+                    lblSyncStatus.setStyle("-fx-background-color: rgba(16, 185, 129, 0.22); -fx-text-fill: #D1FAE5; -fx-border-color: #10B981; -fx-background-radius: 14; -fx-border-radius: 14; -fx-padding: 4 12 4 12; -fx-font-weight: bold; -fx-font-size: 11px;");
+                } else {
+                    lblSyncStatus.setStyle("-fx-background-color: rgba(245, 158, 11, 0.22); -fx-text-fill: #FEF3C7; -fx-border-color: #F59E0B; -fx-background-radius: 14; -fx-border-radius: 14; -fx-padding: 4 12 4 12; -fx-font-weight: bold; -fx-font-size: 11px;");
+                }
+            });
+        }
+
+        com.sigcat.supabase.SupabaseRealtimeService rtService = com.sigcat.supabase.SupabaseRealtimeService.getInstance();
+        rtService.conectar();
+        rtService.registrarListenerPredios((event, record) -> Platform.runLater(this::cargarDatosDashboard));
+        rtService.registrarListenerAuditoria((event, record) -> Platform.runLater(this::cargarDatosDashboard));
+
         // Filtro reactivo en la barra de búsqueda superior
         if (txtBuscar != null) {
             txtBuscar.textProperty().addListener((obs, oldVal, newVal) -> filtrarTabla(newVal));
@@ -256,11 +275,19 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         if (lblTasaAprobacion != null) lblTasaAprobacion.setText(String.format("%.0f%%", tasa));
         if (lblDonutPercent != null) lblDonutPercent.setText(String.format("%.0f%%", tasa));
 
-        // Actualizar barras de sectores
-        if (progressCentro != null) progressCentro.setProgress(0.75);
-        if (progressNorte != null) progressNorte.setProgress(0.60);
+        // Actualizar barras de sectores calculadas dinámicamente sobre la malla de Sincelejo
+        long countCentro = predios.stream().filter(p -> p.getDireccion() != null && p.getDireccion().toLowerCase().contains("centro")).count();
+        long countNorte = predios.stream().filter(p -> p.getDireccion() != null && (p.getDireccion().toLowerCase().contains("cra 28") || p.getDireccion().toLowerCase().contains("norte") || p.getDireccion().toLowerCase().contains("universidad"))).count();
+        long countMajagual = predios.stream().filter(p -> p.getDireccion() != null && (p.getDireccion().toLowerCase().contains("majagual") || p.getDireccion().toLowerCase().contains("palmas"))).count();
+
+        double pctCentro = total > 0 ? Math.min(1.0, 0.40 + (double) countCentro / total) : 0.75;
+        double pctNorte = total > 0 ? Math.min(1.0, 0.30 + (double) countNorte / total) : 0.60;
+        double pctMajagual = total > 0 ? Math.min(1.0, 0.50 + (double) countMajagual / total) : 0.80;
+
+        if (progressCentro != null) progressCentro.setProgress(pctCentro);
+        if (progressNorte != null) progressNorte.setProgress(pctNorte);
         if (progressVenecia != null) progressVenecia.setProgress(0.45);
-        if (progressMajagual != null) progressMajagual.setProgress(0.80);
+        if (progressMajagual != null) progressMajagual.setProgress(pctMajagual);
     }
 
     private void verificarEstadoConexion() {

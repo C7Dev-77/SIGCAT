@@ -136,8 +136,29 @@ public class DatabaseInitializer {
                     storage_url TEXT,
                     estado TEXT DEFAULT 'PENDIENTE_REVISION',
                     descripcion TEXT,
+                    hash_sha256 TEXT,
                     subido_en TEXT DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (predio_id) REFERENCES predios(id_predio) ON DELETE CASCADE
+                );
+            """);
+
+            try {
+                stmt.execute("ALTER TABLE documentos ADD COLUMN hash_sha256 TEXT");
+            } catch (SQLException ignored) {}
+
+            // ─── Tabla: audit_log (Historial de Auditoría Catastral - Mejora #4) ───
+            stmt.execute("""
+                CREATE TABLE IF NOT EXISTS audit_log (
+                    id TEXT PRIMARY KEY,
+                    entidad TEXT NOT NULL,
+                    entidad_id TEXT NOT NULL,
+                    accion TEXT NOT NULL,
+                    estado_anterior TEXT,
+                    estado_nuevo TEXT,
+                    usuario_id TEXT,
+                    usuario_nombre TEXT,
+                    detalles TEXT,
+                    fecha TEXT DEFAULT CURRENT_TIMESTAMP
                 );
             """);
 

@@ -17,6 +17,7 @@ public class DocumentoLegal {
     private String storageUrl;
     private String estado;        // PENDIENTE_REVISION, APROBADO, RECHAZADO
     private String descripcion;
+    private String hashSha256;    // Firma digital / Hash SHA-256 para validación de integridad
     private LocalDateTime subidoEn;
     private LocalDateTime revisadoEn;
     private String revisadoPor;
@@ -130,6 +131,14 @@ public class DocumentoLegal {
 
     public void setRevisadoPor(String revisadoPor) {
         this.revisadoPor = revisadoPor;
+    }
+
+    public String getHashSha256() {
+        return hashSha256;
+    }
+
+    public void setHashSha256(String hashSha256) {
+        this.hashSha256 = hashSha256;
     }
 
     @Override

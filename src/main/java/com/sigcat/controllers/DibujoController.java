@@ -29,8 +29,10 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -713,6 +715,40 @@ public class DibujoController {
         redibujarMapa();
     }
 
+    /**
+     * Exporta una captura en alta resolución del plano cartográfico actual a una imagen PNG (Mejora #6).
+     */
+    @FXML
+    public void exportarMapaPNG(ActionEvent event) {
+        try {
+            javafx.scene.image.WritableImage snapshot = mapaCanvas.snapshot(new javafx.scene.SnapshotParameters(), null);
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Exportar Plano Catastral - SIGCAT Sincelejo");
+            fileChooser.setInitialFileName("Plano_Catastral_Sincelejo_" + System.currentTimeMillis() + ".png");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Imagen PNG (*.png)", "*.png"));
+
+            Stage stage = ViewNavigator.obtenerStage(event);
+            if (stage == null && mapaCanvas.getScene() != null) {
+                stage = (Stage) mapaCanvas.getScene().getWindow();
+            }
+
+            File archivoDestino = fileChooser.showSaveDialog(stage);
+            if (archivoDestino != null) {
+                java.awt.image.BufferedImage bImage = javafx.embed.swing.SwingFXUtils.fromFXImage(snapshot, null);
+                javax.imageio.ImageIO.write(bImage, "png", archivoDestino);
+                mostrarMensajeEstado("✔ Plano exportado exitosamente a: " + archivoDestino.getName(), "#10b981");
+
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Plano Cartográfico Exportado");
+                alert.setHeaderText("Archivo PNG Generado");
+                alert.setContentText("El plano georreferenciado se ha guardado en:\n" + archivoDestino.getAbsolutePath());
+                alert.showAndWait();
+            }
+        } catch (Exception e) {
+            mostrarMensajeEstado("Error al exportar plano: " + e.getMessage(), "#ef4444");
+        }
+    }
+
     @FXML
     public void limpiarLienzo() {
         verticesActuales.clear();
@@ -764,6 +800,10 @@ public class DibujoController {
 
         int idGenerado = predioDAO.registrarPredio(nuevo);
         if (idGenerado > 0) {
+            nuevo.setId(idGenerado);
+            // Auditoría formal de radicación de predio (Mejora #4)
+            new com.sigcat.services.AuditService().auditarCreacionPredio(nuevo, usuarioActual);
+
             // Si hay conexión a Supabase, subirlo de inmediato
             if (DatabaseConnectionSupabase.isOnline()) {
                 new Thread(() -> {
