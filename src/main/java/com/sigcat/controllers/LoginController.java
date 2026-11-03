@@ -90,8 +90,8 @@ public class LoginController {
     private void redirigirSegunRol(Usuario usuario, ActionEvent event) {
         try {
             Stage stage = ViewNavigator.obtenerStage(event);
-            if ("FUNCIONARIO".equalsIgnoreCase(usuario.getRol())) {
-                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-funcionario.fxml"));
+            if ("ADMIN".equalsIgnoreCase(usuario.getRol()) || "FUNCIONARIO".equalsIgnoreCase(usuario.getRol())) {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-admin.fxml"));
                 Parent root = loader.load();
                 Object controller = loader.getController();
                 if (controller instanceof RecibeUsuario recibeUsuario) {

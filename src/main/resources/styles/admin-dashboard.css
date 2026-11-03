@@ -1,0 +1,361 @@
+/* ==========================================================================
+   SIGCAT — Panel de Administración Catastral Moderno (JavaFX 21)
+   Inspirado en Dashboard Ejecutivo: Barra lateral índigo/púrpura,
+   tarjetas KPI gradientes, gráficos de tendencia y métricas circulares.
+   ========================================================================== */
+
+.admin-root {
+    -fx-font-family: "Segoe UI", "Inter", "System", sans-serif;
+    -fx-background-color: #edf0f7;
+    -fx-font-size: 13px;
+}
+
+/* ─── SIDEBAR IZQUIERDO (ÍNDIGO / PÚRPURA) ─── */
+.admin-sidebar {
+    -fx-background-color: #5C6BC0;
+    -fx-padding: 24 16 24 16;
+    -fx-alignment: top-center;
+    -fx-pref-width: 210px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.18), 12, 0, 4, 0);
+}
+
+.avatar-circle {
+    -fx-fill: #E8EAF6;
+    -fx-stroke: #FFFFFF;
+    -fx-stroke-width: 3;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.20), 8, 0, 0, 2);
+}
+
+.admin-name {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.admin-role {
+    -fx-text-fill: rgba(255, 255, 255, 0.75);
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-text-transform: uppercase;
+}
+
+.sidebar-nav-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: rgba(255, 255, 255, 0.88);
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-alignment: center-left;
+    -fx-padding: 10 14 10 14;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-graphic-text-gap: 12;
+}
+
+.sidebar-nav-btn:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.16);
+    -fx-text-fill: #FFFFFF;
+}
+
+.sidebar-nav-btn-active {
+    -fx-background-color: rgba(255, 255, 255, 0.26);
+    -fx-text-fill: #FFFFFF;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.12), 4, 0, 0, 1);
+}
+
+.sidebar-logout-btn {
+    -fx-background-color: rgba(239, 68, 68, 0.20);
+    -fx-text-fill: #FECACA;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-alignment: center;
+    -fx-padding: 8 12 8 12;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.sidebar-logout-btn:hover {
+    -fx-background-color: #EF4444;
+    -fx-text-fill: #FFFFFF;
+}
+
+/* ─── BARRA SUPERIOR (TOP BAR) ─── */
+.admin-topbar {
+    -fx-background-color: #5C6BC0;
+    -fx-padding: 12 24 12 24;
+    -fx-alignment: center-left;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.10), 6, 0, 0, 2);
+}
+
+.topbar-title {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.search-box {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 20;
+    -fx-prompt-text-fill: #94A3B8;
+    -fx-text-fill: #1E293B;
+    -fx-padding: 6 16 6 16;
+    -fx-font-size: 12px;
+    -fx-border-color: transparent;
+    -fx-pref-width: 280px;
+}
+
+.search-box:focused {
+    -fx-border-color: #818CF8;
+    -fx-border-radius: 20;
+    -fx-border-width: 1.5;
+}
+
+.sync-badge-online {
+    -fx-background-color: rgba(16, 185, 129, 0.22);
+    -fx-text-fill: #D1FAE5;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 14;
+    -fx-border-color: #10B981;
+    -fx-border-radius: 14;
+    -fx-border-width: 1;
+}
+
+/* ─── TARJETAS DE CONTENIDO (WHITE CARDS) ─── */
+.content-card {
+    -fx-background-color: #FFFFFF;
+    -fx-background-radius: 12;
+    -fx-padding: 16 18 16 18;
+    -fx-effect: dropshadow(three-pass-box, rgba(0, 0, 0, 0.05), 10, 0, 0, 3);
+}
+
+/* ─── TARJETAS KPI GRADIENTES (FILA SUPERIOR) ─── */
+.kpi-gradient-green {
+    -fx-background-color: linear-gradient(to bottom right, #059669, #10B981);
+    -fx-background-radius: 12;
+    -fx-padding: 16 20 16 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.30), 10, 0, 0, 4);
+}
+
+.kpi-gradient-blue {
+    -fx-background-color: linear-gradient(to bottom right, #4F46E5, #6366F1);
+    -fx-background-radius: 12;
+    -fx-padding: 16 20 16 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(99, 102, 241, 0.30), 10, 0, 0, 4);
+}
+
+.kpi-gradient-purple {
+    -fx-background-color: linear-gradient(to bottom right, #7C3AED, #A855F7);
+    -fx-background-radius: 12;
+    -fx-padding: 16 20 16 20;
+    -fx-effect: dropshadow(three-pass-box, rgba(168, 85, 247, 0.30), 10, 0, 0, 4);
+}
+
+.kpi-label {
+    -fx-text-fill: rgba(255, 255, 255, 0.90);
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-transform: uppercase;
+}
+
+.kpi-value {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 26px;
+    -fx-font-weight: 800;
+}
+
+.kpi-subtext {
+    -fx-text-fill: rgba(255, 255, 255, 0.78);
+    -fx-font-size: 11px;
+}
+
+/* ─── ENCABEZADOS Y PILLS ─── */
+.card-header-label {
+    -fx-text-fill: #1E293B;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-transform: uppercase;
+}
+
+.pill-header-purple {
+    -fx-background-color: #8B5CF6;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 4 10 4 10;
+    -fx-background-radius: 6;
+}
+
+/* ─── TABLA DE AUDITORÍA ─── */
+.table-view.admin-table {
+    -fx-background-color: transparent;
+    -fx-border-color: #E2E8F0;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+}
+
+.table-view.admin-table .column-header-background {
+    -fx-background-color: #F8FAFC;
+    -fx-border-color: #E2E8F0;
+    -fx-border-width: 0 0 1 0;
+}
+
+.table-view.admin-table .column-header {
+    -fx-background-color: transparent;
+    -fx-text-fill: #64748B;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 6 8 6;
+}
+
+.table-view.admin-table .table-row-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #F1F5F9;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 4 0 4 0;
+}
+
+.table-view.admin-table .table-row-cell:odd {
+    -fx-background-color: #FAFAFA;
+}
+
+.table-view.admin-table .table-row-cell:hover {
+    -fx-background-color: #EEF2FF;
+}
+
+.table-view.admin-table .table-row-cell:selected {
+    -fx-background-color: #E0E7FF;
+}
+
+/* ─── BADGES DE ESTADO (PILLS) ─── */
+.badge-aprobado {
+    -fx-background-color: rgba(16, 185, 129, 0.15);
+    -fx-text-fill: #059669;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+}
+
+.badge-pendiente {
+    -fx-background-color: rgba(245, 158, 11, 0.15);
+    -fx-text-fill: #D97706;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+}
+
+.badge-rechazado {
+    -fx-background-color: rgba(239, 68, 68, 0.15);
+    -fx-text-fill: #DC2626;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+}
+
+.badge-publico {
+    -fx-background-color: rgba(59, 130, 246, 0.15);
+    -fx-text-fill: #2563EB;
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+}
+
+/* ─── GRÁFICO DE ÁREA (AREACHART) ─── */
+.chart {
+    -fx-padding: 0;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.chart-vertical-grid-lines, .chart-horizontal-grid-lines {
+    -fx-stroke: #E2E8F0;
+    -fx-stroke-dash-array: 2 4;
+}
+
+.default-color0.chart-area-symbol { -fx-background-color: #FB923C, #FFFFFF; }
+.default-color0.chart-series-area-line { -fx-stroke: #FB923C; -fx-stroke-width: 2.5; }
+.default-color0.chart-series-area-fill { -fx-fill: rgba(251, 146, 60, 0.35); }
+
+.default-color1.chart-area-symbol { -fx-background-color: #A855F7, #FFFFFF; }
+.default-color1.chart-series-area-line { -fx-stroke: #A855F7; -fx-stroke-width: 2.5; }
+.default-color1.chart-series-area-fill { -fx-fill: rgba(168, 85, 247, 0.22); }
+
+/* ─── BARRAS DE PROGRESO ─── */
+.progress-bar.bar-verde > .track { -fx-background-color: #E2E8F0; -fx-background-radius: 6; }
+.progress-bar.bar-verde > .bar { -fx-background-color: #10B981; -fx-background-radius: 6; }
+
+.progress-bar.bar-naranja > .track { -fx-background-color: #E2E8F0; -fx-background-radius: 6; }
+.progress-bar.bar-naranja > .bar { -fx-background-color: #F97316; -fx-background-radius: 6; }
+
+.progress-bar.bar-morado > .track { -fx-background-color: #E2E8F0; -fx-background-radius: 6; }
+.progress-bar.bar-morado > .bar { -fx-background-color: #8B5CF6; -fx-background-radius: 6; }
+
+/* ─── INDICADOR CIRCULAR (DONUT CHART / CIRCLE) ─── */
+.donut-circle-bg {
+    -fx-fill: transparent;
+    -fx-stroke: #FED7AA;
+    -fx-stroke-width: 14;
+}
+
+.donut-circle-value {
+    -fx-fill: transparent;
+    -fx-stroke: #F97316;
+    -fx-stroke-width: 14;
+    -fx-stroke-line-cap: round;
+}
+
+.donut-percentage-text {
+    -fx-text-fill: #1E293B;
+    -fx-font-size: 26px;
+    -fx-font-weight: 800;
+}
+
+.donut-subtext {
+    -fx-text-fill: #64748B;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-text-transform: uppercase;
+}
+
+/* ─── BOTONES DE ACCIÓN RÁPIDA ─── */
+.btn-action-primary {
+    -fx-background-color: #5C6BC0;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16 8 16;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.btn-action-primary:hover {
+    -fx-background-color: #4F5B93;
+}
+
+.btn-action-success {
+    -fx-background-color: #10B981;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16 8 16;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.btn-action-success:hover {
+    -fx-background-color: #059669;
+}
+
+.btn-action-danger {
+    -fx-background-color: #EF4444;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+    -fx-padding: 8 16 8 16;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+.btn-action-danger:hover {
+    -fx-background-color: #DC2626;
+}
