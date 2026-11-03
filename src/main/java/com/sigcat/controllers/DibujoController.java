@@ -1,11 +1,16 @@
 package com.sigcat.controllers;
 
+import com.sigcat.dao.DocumentoDAO;
 import com.sigcat.dao.PredioDAO;
+import com.sigcat.dao.PredioDAOSupabase;
 import com.sigcat.geometry.ShoelaceCalculator;
 import com.sigcat.geometry.SolapamientoValidator;
+import com.sigcat.models.DocumentoLegal;
 import com.sigcat.models.Predio;
 import com.sigcat.models.Usuario;
 import com.sigcat.models.Vertice;
+import com.sigcat.supabase.DatabaseConnectionSupabase;
+import com.sigcat.supabase.SupabaseStorageService;
 import com.sigcat.utils.OsmTileManager;
 import com.sigcat.utils.ViewNavigator;
 import javafx.application.Platform;
@@ -13,9 +18,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Cursor;
-import javafx.scene.Node;
 import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
@@ -23,6 +26,7 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
@@ -34,7 +38,8 @@ import java.util.UUID;
 
 /**
  * Controlador JavaFX para el levantamiento catastral sobre cartografía de Sincelejo, Sucre.
- * Renderiza OpenStreetMap en Java puro, valida solapamientos en tiempo real y calcula áreas con Shoelace.
+ * Integra OpenStreetMap en Java puro, validación de solapamientos con predios públicos/privados,
+ * selección interactiva de polígonos por clic en mapa y consulta de recibos de validación en Supabase Storage.
  */
 public class DibujoController {
 
@@ -42,18 +47,36 @@ public class DibujoController {
     @FXML private TextField txtNombrePredio;
     @FXML private TextField txtDireccion;
     @FXML private ComboBox<String> cmbUsoSuelo;
-    @FXML private ComboBox<String> cmbSectorSincelejo; // Opcional en FXML para saltar entre barrios de Sincelejo
+    @FXML private ComboBox<String> cmbSectorSincelejo;
     @FXML private Label lblAreaCalculada;
     @FXML private Label lblPerimetroCalculado;
     @FXML private Label lblCantidadVertices;
     @FXML private Label lblEstadoValidacion;
     @FXML private Button btnGuardarPredio;
 
+    // Ficha dinámica de consulta predial (al hacer clic en cualquier polígono del mapa)
+    @FXML private VBox pnlFichaConsultaPredio;
+    @FXML private Label lblConsultaTitulo;
+    @FXML private Label lblConsultaNombre;
+    @FXML private Label lblConsultaCodigo;
+    @FXML private Label lblConsultaEstado;
+    @FXML private Label lblConsultaPropietario;
+    @FXML private Label lblConsultaDireccion;
+    @FXML private Label lblConsultaArea;
+    @FXML private Label lblConsultaUso;
+    @FXML private Button btnVerReciboValidacion;
+    @FXML private Label lblAvisoRecibo;
+
     private final List<Vertice> verticesActuales = new ArrayList<>();
     private List<Predio> prediosExistentes = new ArrayList<>();
     private final PredioDAO predioDAO = new PredioDAO();
+    private final PredioDAOSupabase predioSupabaseDAO = new PredioDAOSupabase();
+    private final DocumentoDAO documentoDAO = new DocumentoDAO();
+    private final SupabaseStorageService storageService = new SupabaseStorageService();
+
     private int propietarioActualId = 1;
     private Usuario usuarioActual;
+    private Predio predioSeleccionadoConsulta;
 
     // Motor de OpenStreetMap centrado por defecto en Sincelejo, Sucre, Colombia
     private OsmTileManager osmTileManager;
@@ -62,9 +85,11 @@ public class DibujoController {
     private double lastMouseY;
     private double pressStartX;
     private double pressStartY;
-    // Flag para distinguir arrastre (pan) de clic simple (vértice)
     private boolean isDragging = false;
     private static final double DRAG_THRESHOLD = 5.0;
+
+    private boolean modoAuditor = false;
+    private Predio predioEnAuditoria;
 
     @FXML
     public void initialize() {
@@ -116,9 +141,6 @@ public class DibujoController {
         });
     }
 
-    private boolean modoAuditor = false;
-    private Predio predioEnAuditoria;
-
     public void activarModoInspeccionFuncionario(Predio predio, Usuario funcionario) {
         this.modoAuditor = true;
         this.usuarioActual = funcionario;
@@ -155,8 +177,9 @@ public class DibujoController {
             }
 
             mostrarMensajeEstado("AUDITORÍA DE PREDIO: " + predio.getCodigoCatastral() + " (" + predio.getEstado() + ")", "#3b82f6");
+            seleccionarYMostrarFichaPredio(predio);
         } else {
-            mostrarMensajeEstado("VISOR CARTOGRÁFICO: Malla oficial de Sincelejo (Modo Consulta)", "#3b82f6");
+            mostrarMensajeEstado("VISOR CARTOGRÁFICO: Malla oficial de Sincelejo (Haga clic en un predio para consultarlo)", "#3b82f6");
             if (btnGuardarPredio != null) {
                 btnGuardarPredio.setVisible(false);
                 btnGuardarPredio.setManaged(false);
@@ -207,6 +230,7 @@ public class DibujoController {
             if ("RECHAZADO".equalsIgnoreCase(predio.getEstado())) color = "#dc2626";
 
             mostrarMensajeEstado("PREDIO: " + predio.getCodigoCatastral() + " (" + predio.getEstado() + ") — Sincelejo", color);
+            seleccionarYMostrarFichaPredio(predio);
         }
         actualizarMetricasYValidacion();
         redibujarMapa();
@@ -237,14 +261,13 @@ public class DibujoController {
 
     private boolean esCoordenadaGeografica(Vertice v) {
         if (v == null) return false;
-        // En Colombia / Sincelejo: Longitud aprox -75.4 (entre -85 y -65), Latitud aprox 9.3 (entre 0 y 15)
         return (v.getX() >= -180.0 && v.getX() <= 180.0 && v.getY() >= -90.0 && v.getY() <= 90.0);
     }
 
     private List<Vertice> convertirAVerticesMetros(List<Vertice> lista) {
         if (lista == null || lista.isEmpty()) return lista;
         if (!esCoordenadaGeografica(lista.get(0))) {
-            return lista; // Ya eran píxeles o metros locales
+            return lista;
         }
 
         double refLon = lista.get(0).getX();
@@ -299,11 +322,10 @@ public class DibujoController {
             mapaCanvas.setCursor(Cursor.CROSSHAIR);
         });
 
-        // Al hacer clic puntual (sin arrastrar): trazar vértice georreferenciado
+        // Al hacer clic puntual (sin arrastrar):
+        // Si el clic cae dentro de un predio registrado -> consultar su ficha catastral, dueño y recibo
+        // Si cae en terreno libre -> agregar vértice de levantamiento catastral
         mapaCanvas.setOnMouseClicked((MouseEvent event) -> {
-            if (modoAuditor) {
-                return; // En modo auditoría del funcionario solo se inspecciona y navega
-            }
             if (event.getButton() == MouseButton.PRIMARY && !isDragging) {
                 double sx = event.getX();
                 double sy = event.getY();
@@ -314,11 +336,27 @@ public class DibujoController {
                 double lon = geo[0];
                 double lat = geo[1];
 
-                Vertice nuevoVertice = new Vertice(lon, lat, verticesActuales.size() + 1);
-                verticesActuales.add(nuevoVertice);
+                // 1. Evaluar si el usuario hizo clic dentro de algún predio de la malla
+                Predio predioClickeado = buscarPredioEnMalla(lat, lon);
 
-                actualizarMetricasYValidacion();
-                redibujarMapa();
+                if (predioClickeado != null) {
+                    seleccionarYMostrarFichaPredio(predioClickeado);
+                    return;
+                }
+
+                // 2. Si no tocó ningún predio existente y no está en modo auditoría, trazar vértice
+                if (!modoAuditor) {
+                    if (predioSeleccionadoConsulta != null) {
+                        cerrarFichaConsulta();
+                    }
+                    Vertice nuevoVertice = new Vertice(lon, lat, verticesActuales.size() + 1);
+                    verticesActuales.add(nuevoVertice);
+
+                    actualizarMetricasYValidacion();
+                    redibujarMapa();
+                } else {
+                    cerrarFichaConsulta();
+                }
             }
             isDragging = false;
         });
@@ -331,6 +369,136 @@ public class DibujoController {
             redibujarMapa();
             event.consume();
         });
+    }
+
+    /**
+     * Busca qué predio de la malla oficial contiene las coordenadas geográficas de clic.
+     */
+    private Predio buscarPredioEnMalla(double lat, double lon) {
+        Vertice clickPto = new Vertice(lon, lat, 0);
+
+        for (Predio p : prediosExistentes) {
+            if (p.getVertices() != null && p.getVertices().size() >= 3) {
+                if (SolapamientoValidator.puntoDentroDePoligono(clickPto, p.getVertices())) {
+                    return p;
+                }
+            }
+        }
+
+        // Si está online y no se encontró localmente, consultar Supabase
+        if (DatabaseConnectionSupabase.isOnline()) {
+            try {
+                return predioSupabaseDAO.buscarPredioEnCoordenada(lat, lon);
+            } catch (Exception ignored) {}
+        }
+        return null;
+    }
+
+    /**
+     * Despliega la ficha informativa del predio consultado con dueño y recibo de validación.
+     */
+    public void seleccionarYMostrarFichaPredio(Predio p) {
+        this.predioSeleccionadoConsulta = p;
+
+        if (pnlFichaConsultaPredio != null) {
+            pnlFichaConsultaPredio.setVisible(true);
+            pnlFichaConsultaPredio.setManaged(true);
+        }
+
+        String nombre = p.getNombre() != null ? p.getNombre() : "Predio Sin Denominación";
+        String codigo = p.getCodigoCatastral() != null ? p.getCodigoCatastral() : "70001-PEND";
+        String estado = p.getEstado() != null ? p.getEstado().toUpperCase() : "PENDIENTE";
+        String tipo = p.getTipo() != null ? p.getTipo().toUpperCase() : "PRIVADO";
+        String direccion = p.getDireccion() != null ? p.getDireccion() : "Sincelejo, Sucre";
+        String uso = p.getUsoSuelo() != null ? p.getUsoSuelo() : "Urbano";
+        double area = p.getAreaCalculada() > 0 ? p.getAreaCalculada() : p.getArea();
+
+        // Determinar nombre del propietario
+        String propietario = p.getNombrePropietario();
+        boolean esPublico = "PUBLICO".equalsIgnoreCase(estado) || "PUBLICO".equalsIgnoreCase(tipo) || "INSTITUCIONAL".equalsIgnoreCase(tipo);
+        if (propietario == null || propietario.trim().isEmpty()) {
+            if (esPublico) {
+                propietario = "Municipio de Sincelejo / Entidad Oficial";
+            } else {
+                propietario = "Propietario Registrado (ID #" + p.getPropietarioId() + ")";
+            }
+        }
+
+        if (lblConsultaNombre != null) lblConsultaNombre.setText(nombre);
+        if (lblConsultaCodigo != null) lblConsultaCodigo.setText(codigo);
+        if (lblConsultaDireccion != null) lblConsultaDireccion.setText(direccion);
+        if (lblConsultaPropietario != null) lblConsultaPropietario.setText("👤 " + propietario);
+        if (lblConsultaArea != null) lblConsultaArea.setText(String.format("%.2f m²", area));
+        if (lblConsultaUso != null) lblConsultaUso.setText(uso);
+
+        if (lblConsultaEstado != null) {
+            lblConsultaEstado.setText(esPublico ? "PÚBLICO / INSTITUCIONAL" : estado);
+            if (esPublico) {
+                lblConsultaEstado.setStyle("-fx-background-color: rgba(92, 107, 192, 0.3); -fx-text-fill: #9fa8da; -fx-font-weight: bold; -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
+            } else if ("APROBADO".equalsIgnoreCase(estado)) {
+                lblConsultaEstado.setStyle("-fx-background-color: rgba(34, 197, 94, 0.3); -fx-text-fill: #4ade80; -fx-font-weight: bold; -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
+            } else {
+                lblConsultaEstado.setStyle("-fx-background-color: rgba(245, 158, 11, 0.3); -fx-text-fill: #fbbf24; -fx-font-weight: bold; -fx-padding: 3 8 3 8; -fx-background-radius: 6;");
+            }
+        }
+
+        // Consultar URL de recibo de validación
+        String reciboUrl = p.getReciboValidacionUrl();
+        if ((reciboUrl == null || reciboUrl.isEmpty()) && DatabaseConnectionSupabase.isOnline()) {
+            try {
+                DocumentoLegal doc = documentoDAO.obtenerReciboValidacion(p.getId());
+                if (doc != null && doc.getStorageUrl() != null) {
+                    reciboUrl = doc.getStorageUrl();
+                    p.setReciboValidacionUrl(reciboUrl);
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (btnVerReciboValidacion != null) {
+            if (reciboUrl != null && !reciboUrl.isEmpty()) {
+                btnVerReciboValidacion.setStyle("-fx-background-color: #22c55e; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                if (lblAvisoRecibo != null) lblAvisoRecibo.setText("✔ Recibo de validación verificado disponible");
+            } else {
+                btnVerReciboValidacion.setStyle("-fx-background-color: #5C6BC0; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+                if (lblAvisoRecibo != null) lblAvisoRecibo.setText("ℹ️ Sin recibo digitalizado (clic para consultar)");
+            }
+        }
+
+        mostrarMensajeEstado("CONSULTA CATASTRAL: " + nombre + " (" + codigo + ") | Dueño: " + propietario, "#38bdf8");
+        redibujarMapa();
+    }
+
+    /**
+     * Abre el documento legal o recibo de validación del predio en el visor nativo del sistema.
+     */
+    @FXML
+    public void verReciboPredioConsultado() {
+        if (predioSeleccionadoConsulta == null) return;
+
+        String url = predioSeleccionadoConsulta.getReciboValidacionUrl();
+        if (url != null && !url.isEmpty()) {
+            mostrarMensajeEstado("Descargando recibo oficial desde Supabase Storage...", "#22c55e");
+            storageService.descargarYAbrirDocumento(url, "Recibo_" + predioSeleccionadoConsulta.getCodigoCatastral() + ".pdf");
+        } else {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Recibo de Validación Catastral");
+            alert.setHeaderText("Predio: " + predioSeleccionadoConsulta.getNombre());
+            alert.setContentText("El predio " + predioSeleccionadoConsulta.getCodigoCatastral() +
+                    " (" + predioSeleccionadoConsulta.getEstado() + ") no cuenta aún con un recibo de validación digitalizado en Supabase Storage.\n\n" +
+                    "El propietario o funcionario puede adjuntarlo desde el módulo de gestión documental.");
+            alert.showAndWait();
+        }
+    }
+
+    @FXML
+    public void cerrarFichaConsulta() {
+        this.predioSeleccionadoConsulta = null;
+        if (pnlFichaConsultaPredio != null) {
+            pnlFichaConsultaPredio.setVisible(false);
+            pnlFichaConsultaPredio.setManaged(false);
+        }
+        actualizarMetricasYValidacion();
+        redibujarMapa();
     }
 
     @FXML
@@ -349,8 +517,8 @@ public class DibujoController {
         if (n < 3) {
             if (lblAreaCalculada != null) lblAreaCalculada.setText("0.00 m²");
             if (lblPerimetroCalculado != null) lblPerimetroCalculado.setText("0.00 m");
-            if (!modoAuditor) {
-                mostrarMensajeEstado("Sincelejo, Sucre | Arrastrar: Mover mapa | Scroll: Zoom | Clic: Trazar vértice (mín. 3)", "#64748b");
+            if (!modoAuditor && predioSeleccionadoConsulta == null) {
+                mostrarMensajeEstado("Sincelejo, Sucre | Arrastrar: Mover mapa | Scroll: Zoom | Clic en predio: Consultar ficha | Clic libre: Trazar vértice", "#64748b");
                 if (btnGuardarPredio != null) btnGuardarPredio.setDisable(true);
             }
             return;
@@ -375,7 +543,13 @@ public class DibujoController {
 
         for (Predio existente : prediosExistentes) {
             if (SolapamientoValidator.PoligonosSeSolapan(verticesActuales, existente.getVertices())) {
-                mostrarMensajeEstado("ALERTA DE SOLAPAMIENTO: Invade el predio " + existente.getCodigoCatastral(), "#dc2626");
+                boolean esPub = "PUBLICO".equalsIgnoreCase(existente.getEstado()) ||
+                                "PUBLICO".equalsIgnoreCase(existente.getTipo()) ||
+                                "INSTITUCIONAL".equalsIgnoreCase(existente.getTipo());
+                String aviso = esPub
+                        ? "ALERTA: Invade predio público/institucional (" + existente.getNombre() + ") — Inalienable."
+                        : "ALERTA DE SOLAPAMIENTO: Invade el predio " + existente.getCodigoCatastral();
+                mostrarMensajeEstado(aviso, "#dc2626");
                 if (btnGuardarPredio != null) btnGuardarPredio.setDisable(true);
                 return;
             }
@@ -402,7 +576,7 @@ public class DibujoController {
             for (int y = 0; y < h; y += 40) gc.strokeLine(0, y, w, y);
         }
 
-        // 1. Dibujar predios de la malla oficial (aprobados en catastro de Sincelejo)
+        // 1. Dibujar predios de la malla oficial (aprobados y públicos reconocidos de Sincelejo)
         for (Predio p : prediosExistentes) {
             if (predioEnAuditoria != null && p.getId() == predioEnAuditoria.getId()) {
                 continue;
@@ -428,14 +602,24 @@ public class DibujoController {
                 }
             }
 
-            if ("APROBADO".equalsIgnoreCase(p.getEstado())) {
+            boolean esPublico = "PUBLICO".equalsIgnoreCase(p.getEstado()) ||
+                                "PUBLICO".equalsIgnoreCase(p.getTipo()) ||
+                                "INSTITUCIONAL".equalsIgnoreCase(p.getTipo());
+            boolean esSeleccionado = (predioSeleccionadoConsulta != null && p.getId() == predioSeleccionadoConsulta.getId());
+
+            if (esPublico) {
+                // Color Índigo institucional oficial
+                gc.setFill(Color.rgb(92, 107, 192, 0.45));
+                gc.setStroke(esSeleccionado ? Color.web("#f59e0b") : Color.web("#3949ab"));
+            } else if ("APROBADO".equalsIgnoreCase(p.getEstado())) {
                 gc.setFill(Color.rgb(37, 99, 235, 0.35));
-                gc.setStroke(Color.web("#1d4ed8"));
+                gc.setStroke(esSeleccionado ? Color.web("#f59e0b") : Color.web("#1d4ed8"));
             } else {
                 gc.setFill(Color.rgb(245, 158, 11, 0.35));
-                gc.setStroke(Color.web("#b45309"));
+                gc.setStroke(esSeleccionado ? Color.web("#f59e0b") : Color.web("#b45309"));
             }
-            gc.setLineWidth(2.2);
+
+            gc.setLineWidth(esSeleccionado ? 4.5 : 2.2);
             gc.fillPolygon(xs, ys, numV);
             gc.strokePolygon(xs, ys, numV);
 
@@ -450,9 +634,11 @@ public class DibujoController {
                 labelX = centro.getX();
                 labelY = centro.getY();
             }
+
             gc.setFill(Color.web("#0f172a"));
             gc.setFont(Font.font("System", 11));
-            gc.fillText(p.getCodigoCatastral(), labelX - 25, labelY);
+            String etiqueta = esPublico ? "🏛️ " + (p.getNombre() != null ? p.getNombre() : p.getCodigoCatastral()) : p.getCodigoCatastral();
+            gc.fillText(etiqueta, labelX - 35, labelY);
         }
 
         // 2. Dibujar polígono en trazado activo o en modo inspección
@@ -530,6 +716,7 @@ public class DibujoController {
     @FXML
     public void limpiarLienzo() {
         verticesActuales.clear();
+        cerrarFichaConsulta();
         actualizarMetricasYValidacion();
         redibujarMapa();
     }
@@ -559,7 +746,6 @@ public class DibujoController {
         }
 
         Predio nuevo = new Predio();
-        // Prefijo 70001 correspondiente al código DANE catastral de Sincelejo, Sucre
         nuevo.setCodigoCatastral("70001-" + UUID.randomUUID().toString().substring(0, 5).toUpperCase());
         nuevo.setNombre(nombre);
         nuevo.setDireccion(direccion + " - Sincelejo, Sucre");
@@ -567,13 +753,26 @@ public class DibujoController {
         List<Vertice> verticesParaCalculo = convertirAVerticesMetros(verticesActuales);
         nuevo.setArea(ShoelaceCalculator.calcularArea(verticesParaCalculo));
         nuevo.setEstado("PENDIENTE");
+        nuevo.setTipo("PRIVADO");
         nuevo.setPropietarioId(propietarioActualId);
+        if (usuarioActual != null) {
+            nuevo.setNombrePropietario(usuarioActual.getNombre());
+        }
         nuevo.setObservaciones("Levantamiento catastral en Sincelejo, Sucre (Sector: " +
                 (cmbSectorSincelejo != null ? cmbSectorSincelejo.getValue() : "Urbano") + ")");
         nuevo.setVertices(new ArrayList<>(verticesActuales));
 
         int idGenerado = predioDAO.registrarPredio(nuevo);
         if (idGenerado > 0) {
+            // Si hay conexión a Supabase, subirlo de inmediato
+            if (DatabaseConnectionSupabase.isOnline()) {
+                new Thread(() -> {
+                    try {
+                        predioSupabaseDAO.insertarPredio(nuevo, usuarioActual != null ? usuarioActual.getDocumento() : null, nuevo.getNombrePropietario());
+                    } catch (Exception ignored) {}
+                }).start();
+            }
+
             cargarMallaCatastral();
             limpiarLienzo();
             if (txtNombrePredio != null) txtNombrePredio.clear();
@@ -588,6 +787,16 @@ public class DibujoController {
     public void volverAlMenu(ActionEvent event) {
         try {
             Stage stage = ViewNavigator.obtenerStage(event);
+
+            if (usuarioActual != null && "ADMIN".equalsIgnoreCase(usuarioActual.getRol())) {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-admin.fxml"));
+                Parent root = loader.load();
+                MenuAdminController controller = loader.getController();
+                if (controller != null) controller.setUsuario(usuarioActual);
+                ViewNavigator.cambiarVista(stage, root, "SIGCAT — Panel Ejecutivo de Administración Catastral");
+                return;
+            }
+
             if (modoAuditor || (usuarioActual != null && "FUNCIONARIO".equalsIgnoreCase(usuarioActual.getRol()))) {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-funcionario.fxml"));
                 Parent root = loader.load();

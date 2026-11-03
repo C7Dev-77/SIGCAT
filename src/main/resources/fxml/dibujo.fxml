@@ -71,6 +71,43 @@
                     <Insets bottom="20.0" left="20.0" right="20.0" top="20.0"/>
                 </padding>
 
+                <!-- FICHA DINÁMICA DE CONSULTA DE PREDIO (AL HACER CLIC EN EL MAPA) -->
+                <VBox fx:id="pnlFichaConsultaPredio" managed="false" visible="false" spacing="10.0" styleClass="card-consulta-predio">
+                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                        <Label fx:id="lblConsultaTitulo" text="🏛️ Ficha Catastral" styleClass="section-header" HBox.hgrow="ALWAYS"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button mnemonicParsing="false" onAction="#cerrarFichaConsulta" styleClass="btn-outline" text="✖ Cerrar"/>
+                    </HBox>
+                    <Label fx:id="lblConsultaNombre" text="Nombre del Predio" style="-fx-text-fill: #38bdf8; -fx-font-size: 15px; -fx-font-weight: bold;" wrapText="true"/>
+                    <HBox alignment="CENTER_LEFT" spacing="8.0">
+                        <Label fx:id="lblConsultaCodigo" styleClass="hero-badge" text="70001-PUB-001"/>
+                        <Label fx:id="lblConsultaEstado" styleClass="badge-publico" text="PUBLICO"/>
+                    </HBox>
+                    <VBox spacing="2.0">
+                        <Label styleClass="metric-title" text="PROPIETARIO ACTUAL:"/>
+                        <Label fx:id="lblConsultaPropietario" text="👤 Municipio de Sincelejo" style="-fx-text-fill: #f8fafc; -fx-font-weight: bold; -fx-font-size: 12.5px;" wrapText="true"/>
+                    </VBox>
+                    <VBox spacing="2.0">
+                        <Label styleClass="metric-title" text="DIRECCIÓN NOMENCLATURA:"/>
+                        <Label fx:id="lblConsultaDireccion" text="Cra 20 No. 19-37, Sincelejo" style="-fx-text-fill: #cbd5e1; -fx-font-size: 11.5px;" wrapText="true"/>
+                    </VBox>
+                    <HBox spacing="10.0">
+                        <VBox HBox.hgrow="ALWAYS">
+                            <Label styleClass="metric-title" text="ÁREA:"/>
+                            <Label fx:id="lblConsultaArea" text="0.00 m²" style="-fx-text-fill: #38bdf8; -fx-font-weight: bold;"/>
+                        </VBox>
+                        <VBox HBox.hgrow="ALWAYS">
+                            <Label styleClass="metric-title" text="DESTINACIÓN:"/>
+                            <Label fx:id="lblConsultaUso" text="INSTITUCIONAL" style="-fx-text-fill: #a78bfa; -fx-font-weight: bold;"/>
+                        </VBox>
+                    </HBox>
+                    <Separator/>
+                    <Button fx:id="btnVerReciboValidacion" maxWidth="1.7976931348623157E308" mnemonicParsing="false"
+                            onAction="#verReciboPredioConsultado" styleClass="btn-indigo" text="📄 Ver Recibo de Validación"/>
+                    <Label fx:id="lblAvisoRecibo" alignment="CENTER" maxWidth="1.7976931348623157E308"
+                           text="Soporte legal certificado en Supabase Storage" style="-fx-text-fill: #94a3b8; -fx-font-size: 10.5px; -fx-font-style: italic;"/>
+                </VBox>
+
                 <Label styleClass="section-header" text="Ficha de Radicación Predial"/>
                 <Separator/>
 

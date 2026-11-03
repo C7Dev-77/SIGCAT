@@ -227,9 +227,10 @@ public class PredioDAO {
 
     public List<Predio> obtenerPrediosParaValidacionTopologica() {
         List<Predio> lista = new ArrayList<>();
-        // Solo predios APROBADOS conforman la malla catastral oficial.
-        // Los PENDIENTES no se renderizan como malla para evitar solapamientos visuales falsos.
-        String sql = "SELECT * FROM predios WHERE estado = 'APROBADO'";
+        // Predios APROBADOS y predios PUBLICOS (capa base institucional de Sincelejo)
+        String sql = "SELECT p.*, COALESCE(p.nombre_propietario, u.nombre) AS nombre_propietario_join " +
+                     "FROM predios p LEFT JOIN usuarios u ON p.propietario_id = u.id_usuario " +
+                     "WHERE p.estado IN ('APROBADO', 'PUBLICO')";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -246,6 +247,35 @@ public class PredioDAO {
         return lista;
     }
 
+    /**
+     * Busca qué predio de la malla oficial contiene las coordenadas geográficas dadas (clic en mapa).
+     */
+    public Predio buscarPredioEnCoordenada(double latitud, double longitud) {
+        List<Predio> malla = obtenerPrediosParaValidacionTopologica();
+        Vertice clickPto = new Vertice(longitud, latitud, 0);
+        for (Predio p : malla) {
+            if (p.getVertices() != null && p.getVertices().size() >= 3) {
+                if (com.sigcat.geometry.SolapamientoValidator.puntoDentroDePoligono(clickPto, p.getVertices())) {
+                    return p;
+                }
+            }
+        }
+        return null;
+    }
+
+    public boolean actualizarReciboValidacion(int predioId, String reciboUrl) {
+        String sql = "UPDATE predios SET recibo_validacion_url = ? WHERE id_predio = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, reciboUrl);
+            stmt.setInt(2, predioId);
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Error al actualizar recibo validacion: " + e.getMessage());
+            return false;
+        }
+    }
+
     private Predio mapearPredio(ResultSet rs) throws SQLException {
         Predio p = new Predio();
         p.setId(rs.getInt("id"));
@@ -258,8 +288,20 @@ public class PredioDAO {
         p.setPropietarioId(rs.getInt("propietario_id"));
         p.setObservaciones(rs.getString("observaciones"));
         try {
+            String nom = rs.getString("nombre_propietario_join");
+            if (nom != null && !nom.isEmpty()) p.setNombrePropietario(nom);
+        } catch (SQLException ignored) {}
+        try {
             String nom = rs.getString("nombre_propietario");
-            if (nom != null) p.setNombrePropietario(nom);
+            if (nom != null && !nom.isEmpty() && p.getNombrePropietario() == null) p.setNombrePropietario(nom);
+        } catch (SQLException ignored) {}
+        try {
+            String tipo = rs.getString("tipo");
+            if (tipo != null) p.setTipo(tipo);
+        } catch (SQLException ignored) {}
+        try {
+            String url = rs.getString("recibo_validacion_url");
+            if (url != null) p.setReciboValidacionUrl(url);
         } catch (SQLException ignored) {}
         return p;
     }

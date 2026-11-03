@@ -44,8 +44,8 @@ public class PredioDAOSupabase {
 
             int idGenerado = -1;
             try (PreparedStatement stmt = conn.prepareStatement(sqlPredio)) {
-                stmt.setString(1, predio.getCodigoCatastral());
-                stmt.setString(2, predio.getNombre());
+                stmt.setString(1, predio.getCodigoCatastral() != null ? predio.getCodigoCatastral() : "70001-" + System.currentTimeMillis());
+                stmt.setString(2, predio.getNombre() != null && !predio.getNombre().isEmpty() ? predio.getNombre() : "Predio " + predio.getCodigoCatastral());
                 stmt.setString(3, predio.getDireccion());
                 stmt.setString(4, predio.getUsoSuelo());
                 stmt.setDouble(5, predio.getAreaCalculada());

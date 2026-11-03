@@ -1,12 +1,18 @@
 package com.sigcat.controllers;
 
+import com.sigcat.dao.DocumentoDAO;
 import com.sigcat.dao.PredioDAO;
+import com.sigcat.dao.UsuarioDAO;
+import com.sigcat.models.DocumentoLegal;
 import com.sigcat.models.Predio;
 import com.sigcat.models.Usuario;
+import com.sigcat.supabase.DatabaseConnectionSupabase;
+import com.sigcat.supabase.SupabaseStorageService;
 import com.sigcat.utils.ViewNavigator;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -14,22 +20,25 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 /**
  * Controlador para el Dashboard del Propietario ("Mis Predios").
- * Muestra las solicitudes radicadas con semáforo de colores por estado
- * (Verde = APROBADO, Naranja = PENDIENTE, Rojo = RECHAZADO), permite navegar al lienzo de dibujo,
- * inspeccionar en mapa, editar datos y eliminar solicitudes.
+ * Integra consulta cartográfica, validación legal de predios mediante subida de soportes a Supabase Storage,
+ * visualización de recibos de validación catastral y administración del perfil de usuario.
  */
 public class MenuPropietarioController implements LoginController.RecibeUsuario {
 
@@ -47,10 +56,14 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
     @FXML private TableColumn<Predio, String> colUsoSuelo;
     @FXML private TableColumn<Predio, Double> colAreaPredio;
     @FXML private TableColumn<Predio, String> colEstadoPredio;
+    @FXML private TableColumn<Predio, Void> colRecibo;
     @FXML private TableColumn<Predio, String> colObservaciones;
 
     private final PredioDAO predioDAO = new PredioDAO();
+    private final DocumentoDAO documentoDAO = new DocumentoDAO();
+    private final SupabaseStorageService storageService = new SupabaseStorageService();
     private final ObservableList<Predio> misPrediosList = FXCollections.observableArrayList();
+
     private Usuario propietarioActual;
     private int propietarioId = 1;
     private Timeline timerAutoRefresco;
@@ -88,7 +101,8 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
             if (l1.get(i).getId() != l2.get(i).getId() ||
                 !String.valueOf(l1.get(i).getEstado()).equals(String.valueOf(l2.get(i).getEstado())) ||
                 !String.valueOf(l1.get(i).getNombre()).equals(String.valueOf(l2.get(i).getNombre())) ||
-                !String.valueOf(l1.get(i).getDireccion()).equals(String.valueOf(l2.get(i).getDireccion()))) {
+                !String.valueOf(l1.get(i).getDireccion()).equals(String.valueOf(l2.get(i).getDireccion())) ||
+                !String.valueOf(l1.get(i).getReciboValidacionUrl()).equals(String.valueOf(l2.get(i).getReciboValidacionUrl()))) {
                 return false;
             }
         }
@@ -156,6 +170,39 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
                             setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
                         } else {
                             setStyle("-fx-text-fill: #f59e0b; -fx-font-weight: bold;");
+                        }
+                    }
+                }
+            });
+        }
+
+        // Columna de Soporte Legal con Botón "📄 Ver Recibo"
+        if (colRecibo != null) {
+            colRecibo.setCellFactory(col -> new TableCell<>() {
+                private final Button btnVer = new Button("📄 Ver Recibo");
+                private final Label lblSin = new Label("⚠️ Sin soporte");
+                {
+                    btnVer.setStyle("-fx-background-color: #5C6BC0; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
+                    lblSin.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px;");
+                    btnVer.setOnAction(e -> {
+                        Predio p = getTableView().getItems().get(getIndex());
+                        if (p != null) {
+                            abrirReciboDePredio(p);
+                        }
+                    });
+                }
+
+                @Override
+                protected void updateItem(Void item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || getIndex() >= getTableView().getItems().size()) {
+                        setGraphic(null);
+                    } else {
+                        Predio p = getTableView().getItems().get(getIndex());
+                        if (p.getReciboValidacionUrl() != null && !p.getReciboValidacionUrl().isEmpty()) {
+                            setGraphic(btnVer);
+                        } else {
+                            setGraphic(lblSin);
                         }
                     }
                 }
@@ -244,6 +291,247 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
             ViewNavigator.cambiarVista(stage, root, "SIGCAT — Predio Georreferenciado (" + seleccionado.getCodigoCatastral() + ")");
         } catch (IOException e) {
             mostrarEstado("Error al abrir visor cartográfico: " + e.getMessage(), "#ef4444");
+        }
+    }
+
+    /**
+     * Diálogo para que el propietario suba escrituras o recibos de validación catastral a Supabase Storage.
+     */
+    @FXML
+    public void abrirDialogoSubirDocumento(ActionEvent event) {
+        Predio seleccionado = tablaMisPredios.getSelectionModel().getSelectedItem();
+        if (seleccionado == null) {
+            mostrarEstado("Seleccione un predio de la tabla para adjuntar su soporte legal o recibo.", "#f59e0b");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Gestión Documental Legal — SIGCAT");
+        dialog.setHeaderText("Subir soporte legal para: " + seleccionado.getCodigoCatastral() + " (" + seleccionado.getNombre() + ")");
+        configurarEstiloDialogo(dialog);
+
+        ButtonType btnSubir = new ButtonType("☁️ Subir a Supabase Storage", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(btnSubir, ButtonType.CANCEL);
+
+        VBox form = new VBox(12);
+        form.setPadding(new Insets(18));
+        form.setPrefWidth(480);
+
+        Label lblTipo = new Label("Tipo de Documento Legal *:");
+        lblTipo.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        ComboBox<String> cmbTipo = new ComboBox<>();
+        cmbTipo.getItems().addAll("RECIBO_VALIDACION", "ESCRITURA_PUBLICA", "CERTIFICADO_CATASTRO", "FOLIO_MATRICULA", "OTRO");
+        cmbTipo.getSelectionModel().selectFirst();
+        cmbTipo.setMaxWidth(Double.MAX_VALUE);
+        cmbTipo.setStyle("-fx-background-color: #1e293b; -fx-border-color: #334155; -fx-border-radius: 6;");
+
+        Label lblDesc = new Label("Descripción / Notaría / Referencia:");
+        lblDesc.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        TextField txtDesc = new TextField();
+        txtDesc.setPromptText("Ej: Recibo de validación catastral expedido en Sincelejo");
+        txtDesc.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
+
+        Label lblArchivo = new Label("Archivo Soporte (PDF, JPG, PNG - máx. 15 MB) *:");
+        lblArchivo.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+
+        HBox boxFile = new HBox(10);
+        boxFile.setAlignment(Pos.CENTER_LEFT);
+        Button btnElegir = new Button("📁 Seleccionar Archivo...");
+        btnElegir.setStyle("-fx-background-color: #334155; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
+        Label lblRuta = new Label("Ningún archivo seleccionado");
+        lblRuta.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11.5px;");
+        boxFile.getChildren().addAll(btnElegir, lblRuta);
+
+        final File[] archivoSeleccionado = new File[1];
+        btnElegir.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Seleccionar Soporte Legal");
+            fc.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Documentos Legales (PDF, Imagen)", "*.pdf", "*.jpg", "*.jpeg", "*.png"),
+                new FileChooser.ExtensionFilter("Todos los archivos", "*.*")
+            );
+            File f = fc.showOpenDialog(dialog.getDialogPane().getScene().getWindow());
+            if (f != null) {
+                if (f.length() > 15 * 1024 * 1024) {
+                    mostrarEstado("El archivo supera el límite de 15 MB.", "#ef4444");
+                    return;
+                }
+                archivoSeleccionado[0] = f;
+                lblRuta.setText(f.getName() + " (" + (f.length() / 1024) + " KB)");
+                lblRuta.setStyle("-fx-text-fill: #38bdf8; -fx-font-weight: bold;");
+            }
+        });
+
+        form.getChildren().addAll(lblTipo, cmbTipo, lblDesc, txtDesc, lblArchivo, boxFile);
+        dialog.getDialogPane().setContent(form);
+
+        Optional<ButtonType> res = dialog.showAndWait();
+        if (res.isPresent() && res.get() == btnSubir) {
+            if (archivoSeleccionado[0] == null) {
+                mostrarEstado("Debe seleccionar un archivo para subir.", "#ef4444");
+                return;
+            }
+
+            File archivo = archivoSeleccionado[0];
+            String tipoDoc = cmbTipo.getValue();
+            String desc = txtDesc.getText().trim();
+            mostrarEstado("Subiendo documento a Supabase Storage...", "#38bdf8");
+
+            new Thread(() -> {
+                try {
+                    DocumentoLegal doc = storageService.subirDocumento(
+                        archivo,
+                        seleccionado.getId(),
+                        propietarioActual != null ? propietarioActual.getDocumento() : null,
+                        tipoDoc,
+                        desc
+                    );
+
+                    Platform.runLater(() -> {
+                        if ("RECIBO_VALIDACION".equals(tipoDoc) || seleccionado.getReciboValidacionUrl() == null) {
+                            seleccionado.setReciboValidacionUrl(doc.getStorageUrl());
+                            predioDAO.actualizarReciboValidacion(seleccionado.getId(), doc.getStorageUrl());
+                        }
+                        cargarMisPredios();
+                        mostrarEstado("✔ Documento '" + archivo.getName() + "' subido exitosamente a Supabase.", "#22c55e");
+
+                        Alert exito = new Alert(Alert.AlertType.INFORMATION);
+                        exito.setTitle("Documento Registrado");
+                        exito.setHeaderText("¡Soporte subido a Supabase Storage!");
+                        exito.setContentText("El documento fue asociado exitosamente al predio " + seleccionado.getCodigoCatastral() + ".\n\n" +
+                                "URL pública: " + doc.getStorageUrl());
+                        configurarEstiloDialogo(exito);
+                        exito.showAndWait();
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> {
+                        mostrarEstado("Error al subir archivo a Supabase: " + ex.getMessage(), "#ef4444");
+                    });
+                }
+            }).start();
+        }
+    }
+
+    /**
+     * Consulta y descarga el recibo de validación del predio seleccionado.
+     */
+    @FXML
+    public void verReciboValidacion(ActionEvent event) {
+        Predio seleccionado = tablaMisPredios.getSelectionModel().getSelectedItem();
+        if (seleccionado == null) {
+            mostrarEstado("Seleccione un predio de la tabla para ver su recibo.", "#f59e0b");
+            return;
+        }
+        abrirReciboDePredio(seleccionado);
+    }
+
+    private void abrirReciboDePredio(Predio p) {
+        String url = p.getReciboValidacionUrl();
+        if (url != null && !url.isEmpty()) {
+            mostrarEstado("Descargando recibo de validación...", "#22c55e");
+            storageService.descargarYAbrirDocumento(url, "Recibo_" + p.getCodigoCatastral() + ".pdf");
+        } else {
+            if (DatabaseConnectionSupabase.isOnline()) {
+                mostrarEstado("Buscando recibo en Supabase...", "#38bdf8");
+                new Thread(() -> {
+                    DocumentoLegal doc = documentoDAO.obtenerReciboValidacion(p.getId());
+                    Platform.runLater(() -> {
+                        if (doc != null && doc.getStorageUrl() != null) {
+                            p.setReciboValidacionUrl(doc.getStorageUrl());
+                            predioDAO.actualizarReciboValidacion(p.getId(), doc.getStorageUrl());
+                            storageService.descargarYAbrirDocumento(doc.getStorageUrl(), "Recibo_" + p.getCodigoCatastral() + ".pdf");
+                            cargarMisPredios();
+                        } else {
+                            mostrarEstado("El predio no cuenta con recibo adjunto. Use el botón 'Subir Soporte Legal'.", "#f59e0b");
+                        }
+                    });
+                }).start();
+            } else {
+                mostrarEstado("El predio no cuenta con recibo adjunto.", "#f59e0b");
+            }
+        }
+    }
+
+    /**
+     * Diálogo para que el propietario administre su cuenta (nombre y contraseña).
+     */
+    @FXML
+    public void abrirMiPerfil(ActionEvent event) {
+        if (propietarioActual == null) {
+            mostrarEstado("No se encontró sesión activa de propietario.", "#f59e0b");
+            return;
+        }
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Mi Perfil de Propietario — SIGCAT");
+        dialog.setHeaderText("Administración de Cuenta | Propietario Catastral");
+        configurarEstiloDialogo(dialog);
+
+        ButtonType btnGuardar = new ButtonType("💾 Actualizar Perfil", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(btnGuardar, ButtonType.CANCEL);
+
+        VBox form = new VBox(12);
+        form.setPadding(new Insets(18));
+        form.setPrefWidth(420);
+
+        Label lblDoc = new Label("Documento de Identidad (Cédula/NIT):");
+        lblDoc.setStyle("-fx-text-fill: #94a3b8; -fx-font-weight: bold;");
+        TextField txtDoc = new TextField(propietarioActual.getDocumento());
+        txtDoc.setDisable(true);
+        txtDoc.setStyle("-fx-background-color: #0f172a; -fx-text-fill: #94a3b8; -fx-border-color: #334155; -fx-border-radius: 6;");
+
+        Label lblNombre = new Label("Nombre Completo *:");
+        lblNombre.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        TextField txtNombre = new TextField(propietarioActual.getNombre());
+        txtNombre.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
+
+        Label lblPass = new Label("Nueva Contraseña (dejar en blanco para no cambiar):");
+        lblPass.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        PasswordField txtPass = new PasswordField();
+        txtPass.setPromptText("Mínimo 4 caracteres");
+        txtPass.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
+
+        Label lblPassConf = new Label("Confirmar Nueva Contraseña:");
+        lblPassConf.setStyle("-fx-text-fill: #f1f5f9; -fx-font-weight: bold;");
+        PasswordField txtPassConf = new PasswordField();
+        txtPassConf.setPromptText("Repetir contraseña");
+        txtPassConf.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-border-color: #334155; -fx-border-radius: 6; -fx-padding: 8;");
+
+        form.getChildren().addAll(lblDoc, txtDoc, lblNombre, txtNombre, new Separator(), lblPass, txtPass, lblPassConf, txtPassConf);
+        dialog.getDialogPane().setContent(form);
+
+        Optional<ButtonType> res = dialog.showAndWait();
+        if (res.isPresent() && res.get() == btnGuardar) {
+            String nuevoNom = txtNombre.getText().trim();
+            String p1 = txtPass.getText().trim();
+            String p2 = txtPassConf.getText().trim();
+
+            if (nuevoNom.isEmpty()) {
+                mostrarEstado("El nombre no puede estar vacío.", "#ef4444");
+                return;
+            }
+
+            if (!p1.isEmpty()) {
+                if (p1.length() < 4) {
+                    mostrarEstado("La contraseña debe tener al menos 4 caracteres.", "#ef4444");
+                    return;
+                }
+                if (!p1.equals(p2)) {
+                    mostrarEstado("Las contraseñas no coinciden.", "#ef4444");
+                    return;
+                }
+            }
+
+            boolean ok = new UsuarioDAO().actualizarPerfil(propietarioActual.getId(), nuevoNom, p1.isEmpty() ? null : p1);
+            if (ok) {
+                propietarioActual.setNombre(nuevoNom);
+                if (lblBienvenidaPropietario != null) {
+                    lblBienvenidaPropietario.setText("Propietario: " + nuevoNom + " (Doc: " + propietarioActual.getDocumento() + ") — Sincelejo, Sucre");
+                }
+                mostrarEstado("✔ Perfil actualizado exitosamente.", "#22c55e");
+            } else {
+                mostrarEstado("Error al actualizar perfil en la base de datos.", "#ef4444");
+            }
         }
     }
 

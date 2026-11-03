@@ -379,3 +379,47 @@
 .dialog-pane .button-bar .button:default:hover {
     -fx-background-color: #1d4ed8;
 }
+
+/* ==========================================================================
+   FICHA DE CONSULTA PREDIAL (MAP CLICK) & SOPORTE LEGAL
+   ========================================================================== */
+.card-consulta-predio {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #5C6BC0;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 14;
+    -fx-effect: dropshadow(three-pass-box, rgba(92, 107, 192, 0.35), 14, 0, 0, 4);
+}
+
+.badge-publico {
+    -fx-background-color: rgba(92, 107, 192, 0.25);
+    -fx-text-fill: #9fa8da;
+    -fx-font-weight: bold;
+    -fx-padding: 3 8 3 8;
+    -fx-background-radius: 6;
+    -fx-font-size: 11px;
+}
+
+.badge-aprobado {
+    -fx-background-color: rgba(34, 197, 94, 0.25);
+    -fx-text-fill: #4ade80;
+    -fx-font-weight: bold;
+    -fx-padding: 3 8 3 8;
+    -fx-background-radius: 6;
+    -fx-font-size: 11px;
+}
+
+.btn-indigo {
+    -fx-background-color: #5C6BC0;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-padding: 9 14 9 14;
+    -fx-background-radius: 7;
+    -fx-cursor: hand;
+}
+.btn-indigo:hover {
+    -fx-background-color: #3F51B5;
+}
+

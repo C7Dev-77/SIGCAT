@@ -165,6 +165,35 @@ public class UsuarioDAO {
         return Optional.empty();
     }
 
+    /**
+     * Actualiza el nombre y/o contraseña de un usuario (Perfil de Propietario).
+     */
+    public boolean actualizarPerfil(int id, String nuevoNombre, String nuevaPasswordPlana) {
+        StringBuilder sql = new StringBuilder("UPDATE usuarios SET nombre = ?");
+        String nuevoHash = null;
+        if (nuevaPasswordPlana != null && !nuevaPasswordPlana.trim().isEmpty()) {
+            nuevoHash = PasswordUtil.hashPassword(nuevaPasswordPlana.trim());
+            sql.append(", password = ?, password_hash = ?");
+        }
+        sql.append(" WHERE id_usuario = ?");
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql.toString())) {
+            stmt.setString(1, nuevoNombre.trim());
+            if (nuevoHash != null) {
+                stmt.setString(2, nuevoHash);
+                stmt.setString(3, nuevoHash);
+                stmt.setInt(4, id);
+            } else {
+                stmt.setInt(2, id);
+            }
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("Error al actualizar perfil de usuario: " + e.getMessage());
+            return false;
+        }
+    }
+
     private Usuario mapearUsuario(ResultSet rs) throws SQLException {
         Usuario u = new Usuario();
         try {
