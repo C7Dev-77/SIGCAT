@@ -16,4 +16,5 @@ target/
 # Variables de entorno con claves secretas — NUNCA subir a GitHub
 .env
 *.env
+data/
 

@@ -30,13 +30,12 @@ public class DatabaseConnectionSupabase {
      */
     public static synchronized Connection getConnection() throws SQLException {
         if (connection == null || connection.isClosed()) {
-            String url  = dotenv.get("SUPABASE_JDBC_URL",  System.getenv("SUPABASE_JDBC_URL"));
-            String user = dotenv.get("SUPABASE_DB_USER",   System.getenv("SUPABASE_DB_USER"));
-            String pass = dotenv.get("SUPABASE_DB_PASSWORD", System.getenv("SUPABASE_DB_PASSWORD"));
+            String url  = SupabaseConfig.getJdbcUrl();
+            String user = SupabaseConfig.getDbUser();
+            String pass = SupabaseConfig.getDbPassword();
 
             if (url == null || user == null || pass == null) {
-                throw new SQLException("[SIGCAT] Las variables de entorno de Supabase no están configuradas. " +
-                        "Verifica el archivo .env en la raíz del proyecto.");
+                throw new SQLException("[SIGCAT] Las credenciales de conexión a Supabase no están disponibles.");
             }
 
             connection = DriverManager.getConnection(url, user, pass);

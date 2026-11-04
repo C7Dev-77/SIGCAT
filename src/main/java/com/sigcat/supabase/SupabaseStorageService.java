@@ -32,9 +32,8 @@ public class SupabaseStorageService {
     private final DocumentoDAO documentoDAO;
 
     public SupabaseStorageService() {
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-        this.supabaseUrl = dotenv.get("SUPABASE_URL");
-        this.anonKey = dotenv.get("SUPABASE_ANON_KEY");
+        this.supabaseUrl = SupabaseConfig.getSupabaseUrl();
+        this.anonKey = SupabaseConfig.getAnonKey();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(15))
                 .build();
@@ -43,6 +42,7 @@ public class SupabaseStorageService {
 
     /**
      * Sube un archivo a Supabase Storage y registra su metadato en la base de datos PostgreSQL.
+     * Si no hay conexión o falla la nube, aplica persistencia local (Offline-First).
      *
      * @param archivo      Archivo local a subir (PDF, JPG, PNG)
      * @param predioId     ID del predio al que pertenece el soporte
@@ -56,45 +56,74 @@ public class SupabaseStorageService {
             throw new IllegalArgumentException("El archivo a subir no existe o es nulo.");
         }
 
+        // Validar tamaño máximo (Mejora #7: 10 MB)
+        if (archivo.length() > 10 * 1024 * 1024) {
+            throw new IOException("El archivo supera el tamaño máximo permitido de 10 MB.");
+        }
+
         // Sanitizar y generar nombre único
         String extension = obtenerExtension(archivo.getName());
         String nombreUnico = UUID.randomUUID().toString().substring(0, 8) + "_" + sanitizarNombre(archivo.getName());
         String storagePath = "predio_" + predioId + "/" + nombreUnico;
+        String publicUrl = null;
 
-        // URL para subir vía Storage API (POST /storage/v1/object/{bucket}/{path})
-        String endpointUpload = supabaseUrl + "/storage/v1/object/" + BUCKET_DOCUMENTOS + "/" + storagePath;
-        String mimeType = detectarMimeType(archivo);
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(endpointUpload))
-                .header("apikey", anonKey)
-                .header("Authorization", "Bearer " + anonKey)
-                .header("Content-Type", mimeType)
-                .header("x-upsert", "true")
-                .POST(HttpRequest.BodyPublishers.ofFile(archivo.toPath()))
-                .build();
-
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() == 200 || response.statusCode() == 201) {
-            String publicUrl = supabaseUrl + "/storage/v1/object/public/" + BUCKET_DOCUMENTOS + "/" + storagePath;
-            System.out.println("[STORAGE] Archivo subido exitosamente: " + publicUrl);
-
-            DocumentoLegal doc = new DocumentoLegal(predioId, tipoDoc, archivo.getName(), storagePath, publicUrl);
-            doc.setPropietarioId(propietarioId);
-            doc.setDescripcion(descripcion);
+        // 1. Intentar subida a Supabase Storage Cloud si la URL y key están configuradas
+        if (supabaseUrl != null && !supabaseUrl.isBlank() && anonKey != null && !anonKey.isBlank()) {
             try {
-                doc.setHashSha256(com.sigcat.security.DocumentoSecurityUtil.calcularSHA256(archivo));
-            } catch (Exception ignored) {}
+                String endpointUpload = supabaseUrl + "/storage/v1/object/" + BUCKET_DOCUMENTOS + "/" + storagePath;
+                String mimeType = detectarMimeType(archivo);
 
-            boolean guardado = documentoDAO.insertar(doc);
-            if (!guardado) {
-                System.err.println("[STORAGE] Archivo subido a storage pero falló registro en tabla documentos.");
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(endpointUpload))
+                        .header("apikey", anonKey)
+                        .header("Authorization", "Bearer " + anonKey)
+                        .header("Content-Type", mimeType)
+                        .header("x-upsert", "true")
+                        .timeout(Duration.ofSeconds(15))
+                        .POST(HttpRequest.BodyPublishers.ofFile(archivo.toPath()))
+                        .build();
+
+                HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() == 200 || response.statusCode() == 201) {
+                    publicUrl = supabaseUrl + "/storage/v1/object/public/" + BUCKET_DOCUMENTOS + "/" + storagePath;
+                    System.out.println("[STORAGE] Archivo subido exitosamente a Supabase: " + publicUrl);
+                } else {
+                    System.err.println("[STORAGE] Aviso respuesta Supabase (Status " + response.statusCode() + "): " + response.body());
+                }
+            } catch (Exception e) {
+                System.err.println("[STORAGE] Excepción de red con Supabase Storage: " + e.getMessage());
             }
-            return doc;
-        } else {
-            throw new IOException("Fallo al subir a Supabase Storage (Status " + response.statusCode() + "): " + response.body());
         }
+
+        // 2. Respaldo local Offline-First en el directorio data/documentos/
+        File dirLocal = new File("data/documentos/predio_" + predioId);
+        if (!dirLocal.exists()) {
+            dirLocal.mkdirs();
+        }
+        File archivoLocal = new File(dirLocal, nombreUnico);
+        try {
+            Files.copy(archivo.toPath(), archivoLocal.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (Exception e) {
+            System.err.println("[STORAGE] Aviso al copiar archivo local: " + e.getMessage());
+        }
+
+        if (publicUrl == null) {
+            publicUrl = archivoLocal.toURI().toString();
+        }
+
+        DocumentoLegal doc = new DocumentoLegal(predioId, tipoDoc, archivo.getName(), storagePath, publicUrl);
+        doc.setPropietarioId(propietarioId);
+        doc.setDescripcion(descripcion);
+        try {
+            doc.setHashSha256(com.sigcat.security.DocumentoSecurityUtil.calcularSHA256(archivo));
+        } catch (Exception ignored) {}
+
+        boolean guardado = documentoDAO.insertar(doc);
+        if (!guardado) {
+            System.err.println("[STORAGE] Falló registro en tabla documentos.");
+        }
+        return doc;
     }
 
     /**
@@ -159,10 +188,22 @@ public class SupabaseStorageService {
     public void descargarYAbrirDocumento(String storageUrl, String nombreOriginal) {
         new Thread(() -> {
             try {
+                if (storageUrl == null || storageUrl.isBlank()) return;
+
+                // Si es un archivo local offline o URI file:
+                if (storageUrl.startsWith("file:") || new File(storageUrl).exists()) {
+                    File localFile = storageUrl.startsWith("file:") ? new File(URI.create(storageUrl)) : new File(storageUrl);
+                    if (localFile.exists() && Desktop.isDesktopSupported()) {
+                        Desktop.getDesktop().open(localFile);
+                        return;
+                    }
+                }
+
                 HttpRequest request = HttpRequest.newBuilder()
                         .uri(URI.create(storageUrl))
                         .header("apikey", anonKey)
                         .header("Authorization", "Bearer " + anonKey)
+                        .timeout(Duration.ofSeconds(15))
                         .GET()
                         .build();
 

@@ -39,9 +39,8 @@ public class SupabaseRealtimeService implements WebSocket.Listener {
     private boolean conectado = false;
 
     private SupabaseRealtimeService() {
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-        this.supabaseUrl = dotenv.get("SUPABASE_URL");
-        this.anonKey = dotenv.get("SUPABASE_ANON_KEY");
+        this.supabaseUrl = SupabaseConfig.getSupabaseUrl();
+        this.anonKey = SupabaseConfig.getAnonKey();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
