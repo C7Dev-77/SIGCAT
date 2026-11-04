@@ -11,7 +11,8 @@ import java.util.UUID;
 
 /**
  * DAO para la gestión de documentos legales y recibos de validación catastral.
- * Implementa arquitectura Offline-First: sincroniza con Supabase PostgreSQL y mantiene
+ * Implementa arquitectura Offline-First: sincroniza con Supabase PostgreSQL y
+ * mantiene
  * réplica local en SQLite para funcionamiento sin conexión.
  */
 public class DocumentoDAO {
@@ -24,13 +25,13 @@ public class DocumentoDAO {
         boolean guardadoRemoto = false;
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                INSERT INTO public.documentos
-                    (id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion, hash_sha256)
-                VALUES (?::uuid, ?, ?::uuid, ?, ?, ?, ?, ?, ?, ?);
-            """;
+                        INSERT INTO public.documentos
+                            (id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion, hash_sha256)
+                        VALUES (?::uuid, ?, ?::uuid, ?, ?, ?, ?, ?, ?, ?);
+                    """;
 
             try (Connection conn = DatabaseConnectionSupabase.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    PreparedStatement stmt = conn.prepareStatement(sql)) {
 
                 stmt.setString(1, doc.getId());
                 stmt.setInt(2, doc.getPredioId());
@@ -39,7 +40,8 @@ public class DocumentoDAO {
                     try {
                         UUID.fromString(doc.getPropietarioId());
                         isUuid = true;
-                    } catch (IllegalArgumentException ignored) {}
+                    } catch (IllegalArgumentException ignored) {
+                    }
                 }
                 if (isUuid) {
                     stmt.setString(3, doc.getPropietarioId());
@@ -68,11 +70,12 @@ public class DocumentoDAO {
 
     private boolean insertarLocal(DocumentoLegal doc) {
         String sql = "INSERT OR REPLACE INTO documentos " +
-                     "(id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion, hash_sha256) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "(id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion, hash_sha256) "
+                +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, doc.getId());
             stmt.setInt(2, doc.getPredioId());
@@ -97,15 +100,15 @@ public class DocumentoDAO {
 
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo,
-                       storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
-                FROM public.documentos
-                WHERE predio_id = ?
-                ORDER BY subido_en DESC;
-            """;
+                        SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo,
+                               storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
+                        FROM public.documentos
+                        WHERE predio_id = ?
+                        ORDER BY subido_en DESC;
+                    """;
 
             try (Connection conn = DatabaseConnectionSupabase.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    PreparedStatement stmt = conn.prepareStatement(sql)) {
 
                 stmt.setInt(1, predioId);
                 try (ResultSet rs = stmt.executeQuery()) {
@@ -126,7 +129,7 @@ public class DocumentoDAO {
         // Fallback local en SQLite
         String sqlLocal = "SELECT * FROM documentos WHERE predio_id = ? ORDER BY subido_en DESC;";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
+                PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
 
             stmt.setInt(1, predioId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -143,16 +146,16 @@ public class DocumentoDAO {
     public DocumentoLegal obtenerReciboValidacion(int predioId) {
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo,
-                       storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
-                FROM public.documentos
-                WHERE predio_id = ? AND tipo_documento = 'RECIBO_VALIDACION'
-                ORDER BY subido_en DESC
-                LIMIT 1;
-            """;
+                        SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo,
+                               storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
+                        FROM public.documentos
+                        WHERE predio_id = ? AND tipo_documento = 'RECIBO_VALIDACION'
+                        ORDER BY subido_en DESC
+                        LIMIT 1;
+                    """;
 
             try (Connection conn = DatabaseConnectionSupabase.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    PreparedStatement stmt = conn.prepareStatement(sql)) {
 
                 stmt.setInt(1, predioId);
                 try (ResultSet rs = stmt.executeQuery()) {
@@ -170,7 +173,7 @@ public class DocumentoDAO {
         // Fallback local
         String sqlLocal = "SELECT * FROM documentos WHERE predio_id = ? AND tipo_documento = 'RECIBO_VALIDACION' LIMIT 1;";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
+                PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
 
             stmt.setInt(1, predioId);
             try (ResultSet rs = stmt.executeQuery()) {
@@ -188,13 +191,13 @@ public class DocumentoDAO {
         boolean remoto = false;
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                UPDATE public.documentos
-                SET estado = ?, revisado_en = NOW(), revisado_por = ?::uuid
-                WHERE id = ?::uuid;
-            """;
+                        UPDATE public.documentos
+                        SET estado = ?, revisado_en = NOW(), revisado_por = ?::uuid
+                        WHERE id = ?::uuid;
+                    """;
 
             try (Connection conn = DatabaseConnectionSupabase.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    PreparedStatement stmt = conn.prepareStatement(sql)) {
 
                 stmt.setString(1, nuevoEstado);
                 if (revisadoPorId != null && !revisadoPorId.isEmpty()) {
@@ -212,11 +215,12 @@ public class DocumentoDAO {
 
         String sqlLocal = "UPDATE documentos SET estado = ? WHERE id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
+                PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
             stmt.setString(1, nuevoEstado);
             stmt.setString(2, docId);
             stmt.executeUpdate();
-        } catch (SQLException ignored) {}
+        } catch (SQLException ignored) {
+        }
 
         return remoto;
     }
@@ -226,7 +230,7 @@ public class DocumentoDAO {
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = "DELETE FROM public.documentos WHERE id = ?::uuid;";
             try (Connection conn = DatabaseConnectionSupabase.getConnection();
-                 PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    PreparedStatement stmt = conn.prepareStatement(sql)) {
 
                 stmt.setString(1, docId);
                 remoto = stmt.executeUpdate() > 0;
@@ -237,7 +241,7 @@ public class DocumentoDAO {
 
         String sqlLocal = "DELETE FROM documentos WHERE id = ?;";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
+                PreparedStatement stmt = conn.prepareStatement(sqlLocal)) {
             stmt.setString(1, docId);
             int filas = stmt.executeUpdate();
             return remoto || filas > 0;
@@ -260,13 +264,16 @@ public class DocumentoDAO {
         d.setDescripcion(rs.getString("descripcion"));
         try {
             d.setHashSha256(rs.getString("hash_sha256"));
-        } catch (SQLException ignored) {}
+        } catch (SQLException ignored) {
+        }
 
         Timestamp subido = rs.getTimestamp("subido_en");
-        if (subido != null) d.setSubidoEn(subido.toLocalDateTime());
+        if (subido != null)
+            d.setSubidoEn(subido.toLocalDateTime());
 
         Timestamp revisado = rs.getTimestamp("revisado_en");
-        if (revisado != null) d.setRevisadoEn(revisado.toLocalDateTime());
+        if (revisado != null)
+            d.setRevisadoEn(revisado.toLocalDateTime());
 
         d.setRevisadoPor(rs.getString("revisado_por"));
         return d;
@@ -285,7 +292,8 @@ public class DocumentoDAO {
         d.setDescripcion(rs.getString("descripcion"));
         try {
             d.setHashSha256(rs.getString("hash_sha256"));
-        } catch (SQLException ignored) {}
+        } catch (SQLException ignored) {
+        }
         return d;
     }
 }

@@ -227,7 +227,7 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
 
         if (colTipoDoc != null) {
             colTipoDoc.setCellValueFactory(new PropertyValueFactory<>("tipoDocumento"));
-            colTipoDoc.setCellFactory(col -> new TableCell<>() {
+            colTipoDoc.setCellFactory(col -> new TableCell<DocumentoLegal, String>() {
                 @Override
                 protected void updateItem(String tipo, boolean empty) {
                     super.updateItem(tipo, empty);
@@ -262,7 +262,7 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
 
         if (colEstadoDoc != null) {
             colEstadoDoc.setCellValueFactory(new PropertyValueFactory<>("estado"));
-            colEstadoDoc.setCellFactory(col -> new TableCell<>() {
+            colEstadoDoc.setCellFactory(col -> new TableCell<DocumentoLegal, String>() {
                 @Override
                 protected void updateItem(String estado, boolean empty) {
                     super.updateItem(estado, empty);
@@ -284,7 +284,7 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
         }
 
         if (colAcciones != null) {
-            colAcciones.setCellFactory(col -> new TableCell<>() {
+            colAcciones.setCellFactory(col -> new TableCell<DocumentoLegal, Void>() {
                 private final Button btnAbrir = new Button("👁️ Ver");
                 private final Button btnBorrar = new Button("🗑️");
                 private final HBox box = new HBox(6, btnAbrir, btnBorrar);

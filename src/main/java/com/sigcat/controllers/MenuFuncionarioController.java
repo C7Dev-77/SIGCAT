@@ -157,7 +157,7 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
 
         if (colArea != null) {
             colArea.setCellValueFactory(new PropertyValueFactory<>("area"));
-            colArea.setCellFactory(col -> new TableCell<>() {
+            colArea.setCellFactory(col -> new TableCell<Predio, Double>() {
                 @Override
                 protected void updateItem(Double area, boolean empty) {
                     super.updateItem(area, empty);
@@ -171,7 +171,7 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
         }
         if (colEstado != null) {
             colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
-            colEstado.setCellFactory(col -> new TableCell<>() {
+            colEstado.setCellFactory(col -> new TableCell<Predio, String>() {
                 @Override
                 protected void updateItem(String estado, boolean empty) {
                     super.updateItem(estado, empty);

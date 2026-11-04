@@ -230,7 +230,7 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
 
         if (colEstado != null) {
             colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
-            colEstado.setCellFactory(col -> new TableCell<>() {
+            colEstado.setCellFactory(col -> new TableCell<Predio, String>() {
                 @Override
                 protected void updateItem(String estado, boolean empty) {
                     super.updateItem(estado, empty);
@@ -253,7 +253,7 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         }
 
         if (colSoporte != null) {
-            colSoporte.setCellFactory(col -> new TableCell<>() {
+            colSoporte.setCellFactory(col -> new TableCell<Predio, String>() {
                 private final Button btnDoc = new Button("📄");
                 {
                     btnDoc.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 13px;");

@@ -140,7 +140,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
 
         if (colAreaPredio != null) {
             colAreaPredio.setCellValueFactory(new PropertyValueFactory<>("area"));
-            colAreaPredio.setCellFactory(col -> new TableCell<>() {
+            colAreaPredio.setCellFactory(col -> new TableCell<Predio, Double>() {
                 @Override
                 protected void updateItem(Double area, boolean empty) {
                     super.updateItem(area, empty);
@@ -155,7 +155,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
 
         if (colEstadoPredio != null) {
             colEstadoPredio.setCellValueFactory(new PropertyValueFactory<>("estado"));
-            colEstadoPredio.setCellFactory(col -> new TableCell<>() {
+            colEstadoPredio.setCellFactory(col -> new TableCell<Predio, String>() {
                 @Override
                 protected void updateItem(String estado, boolean empty) {
                     super.updateItem(estado, empty);
@@ -178,7 +178,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
 
         // Columna de Soporte Legal con Botón "📄 Ver Recibo"
         if (colRecibo != null) {
-            colRecibo.setCellFactory(col -> new TableCell<>() {
+            colRecibo.setCellFactory(col -> new TableCell<Predio, Void>() {
                 private final Button btnVer = new Button("📄 Ver Recibo");
                 private final Label lblSin = new Label("⚠️ Sin soporte");
                 {
