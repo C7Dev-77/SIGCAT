@@ -26,6 +26,40 @@ public class DatabaseInitializer {
 
         try (Statement stmt = conn.createStatement()) {
 
+            // ─── Migración automática de tabla usuarios (Soporte rol ADMIN) ───
+            try (ResultSet rsCheck = stmt.executeQuery("SELECT sql FROM sqlite_master WHERE type='table' AND name='usuarios'")) {
+                if (rsCheck.next()) {
+                    String sql = rsCheck.getString(1);
+                    if (sql != null && !sql.contains("'ADMIN'")) {
+                        stmt.execute("PRAGMA foreign_keys=OFF;");
+                        stmt.execute("""
+                            CREATE TABLE IF NOT EXISTS usuarios_migrated (
+                                id_usuario  INTEGER PRIMARY KEY AUTOINCREMENT,
+                                documento   TEXT    NOT NULL UNIQUE,
+                                nombre      TEXT    NOT NULL,
+                                password    TEXT    NOT NULL,
+                                rol         TEXT    NOT NULL CHECK(rol IN ('PROPIETARIO', 'FUNCIONARIO', 'ADMIN')),
+                                password_hash TEXT DEFAULT '',
+                                email       TEXT,
+                                telefono    TEXT,
+                                avatar_url  TEXT
+                            );
+                        """);
+                        stmt.execute("""
+                            INSERT INTO usuarios_migrated (id_usuario, documento, nombre, password, rol, password_hash, email, telefono, avatar_url)
+                            SELECT id_usuario, documento, nombre, password, rol,
+                                   coalesce(password_hash, ''), email, telefono, avatar_url
+                            FROM usuarios;
+                        """);
+                        stmt.execute("DROP TABLE usuarios;");
+                        stmt.execute("ALTER TABLE usuarios_migrated RENAME TO usuarios;");
+                        stmt.execute("PRAGMA foreign_keys=ON;");
+                    }
+                }
+            } catch (SQLException e) {
+                System.err.println("[DB] Aviso migración usuarios: " + e.getMessage());
+            }
+
             // ─── Tabla: usuarios ───────────────────────────────────
             stmt.execute("""
                 CREATE TABLE IF NOT EXISTS usuarios (

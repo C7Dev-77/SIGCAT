@@ -14,9 +14,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * Servicio de detección automática de conexión a Internet y Supabase (Mejora #10).
+ * Servicio de detección automática de conexión a Internet y Supabase (Mejora
+ * #10).
  * Monitorea el estado de red de manera no bloqueante. Al recuperar la conexión,
- * dispara automáticamente el motor de sincronización (SyncEngine) en segundo plano.
+ * dispara automáticamente el motor de sincronización (SyncEngine) en segundo
+ * plano.
  */
 public class NetworkStatusService {
 
@@ -29,7 +31,8 @@ public class NetworkStatusService {
 
     private Consumer<Boolean> onCambioConexionListener;
 
-    private NetworkStatusService() {}
+    private NetworkStatusService() {
+    }
 
     public static synchronized NetworkStatusService getInstance() {
         if (instance == null) {

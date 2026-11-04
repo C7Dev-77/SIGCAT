@@ -115,7 +115,9 @@ public class DocumentoDAO {
                         insertarLocal(doc); // Cachear localmente
                     }
                 }
-                return lista;
+                if (!lista.isEmpty()) {
+                    return lista;
+                }
             } catch (SQLException e) {
                 System.err.println("[DocumentoDAO] Error al listar de Supabase: " + e.getMessage());
             }
