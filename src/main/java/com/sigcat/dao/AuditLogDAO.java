@@ -24,7 +24,7 @@ public class AuditLogDAO {
         boolean guardadoRemoto = false;
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                INSERT INTO public.audit_log 
+                INSERT INTO public.audit_log
                     (id, entidad, entidad_id, accion, estado_anterior, estado_nuevo, usuario_id, usuario_nombre, detalles, fecha)
                 VALUES (?::uuid, ?, ?, ?, ?, ?, ?, ?, ?, NOW());
             """;
@@ -54,7 +54,7 @@ public class AuditLogDAO {
 
     private boolean registrarLocal(AuditLog log) {
         String sql = """
-            INSERT OR REPLACE INTO audit_log 
+            INSERT OR REPLACE INTO audit_log
                 (id, entidad, entidad_id, accion, estado_anterior, estado_nuevo, usuario_id, usuario_nombre, detalles, fecha)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
         """;

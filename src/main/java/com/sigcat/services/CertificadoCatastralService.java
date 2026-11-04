@@ -38,6 +38,7 @@ import java.util.UUID;
  * Utiliza Apache PDFBox para construir el documento institucional oficial y ZXing para incrustar
  * códigos QR criptográficos de validación ciudadana.
  */
+@SuppressWarnings("deprecation")
 public class CertificadoCatastralService {
 
     private final SupabaseStorageService storageService;

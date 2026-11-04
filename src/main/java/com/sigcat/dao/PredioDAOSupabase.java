@@ -25,8 +25,8 @@ public class PredioDAOSupabase {
      */
     public int insertarPredio(Predio predio, String documentoPropietario, String nombrePropietario) {
         String sqlPredio = """
-            INSERT INTO public.predios 
-                (codigo_catastral, nombre, direccion, uso_suelo, area_calculada, estado, tipo, 
+            INSERT INTO public.predios
+                (codigo_catastral, nombre, direccion, uso_suelo, area_calculada, estado, tipo,
                  observaciones, nombre_propietario, origen_local_id, sincronizado)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true)
             RETURNING id;
@@ -99,7 +99,7 @@ public class PredioDAOSupabase {
     public List<Predio> obtenerTodos() {
         List<Predio> lista = new ArrayList<>();
         String sql = """
-            SELECT p.id, p.codigo_catastral, p.nombre, p.direccion, p.uso_suelo, 
+            SELECT p.id, p.codigo_catastral, p.nombre, p.direccion, p.uso_suelo,
                    p.area_calculada, p.estado, p.tipo, p.observaciones, p.nombre_propietario,
                    p.fecha_radicacion, p.origen_local_id,
                    d.storage_url AS recibo_url
@@ -136,7 +136,7 @@ public class PredioDAOSupabase {
 
         List<Predio> lista = new ArrayList<>();
         String sql = """
-            SELECT p.id, p.codigo_catastral, p.nombre, p.direccion, p.uso_suelo, 
+            SELECT p.id, p.codigo_catastral, p.nombre, p.direccion, p.uso_suelo,
                    p.area_calculada, p.estado, p.tipo, p.observaciones, p.nombre_propietario,
                    p.fecha_radicacion, p.origen_local_id,
                    d.storage_url AS recibo_url
@@ -169,7 +169,7 @@ public class PredioDAOSupabase {
     public List<Predio> obtenerMallaOficial() {
         List<Predio> lista = new ArrayList<>();
         String sql = """
-            SELECT p.id, p.codigo_catastral, p.nombre, p.direccion, p.uso_suelo, 
+            SELECT p.id, p.codigo_catastral, p.nombre, p.direccion, p.uso_suelo,
                    p.area_calculada, p.estado, p.tipo, p.observaciones, p.nombre_propietario,
                    p.fecha_radicacion, p.origen_local_id,
                    d.storage_url AS recibo_url
@@ -199,7 +199,7 @@ public class PredioDAOSupabase {
      */
     public boolean actualizarEstado(int predioId, String nuevoEstado, String observaciones) {
         String sql = """
-            UPDATE public.predios 
+            UPDATE public.predios
             SET estado = ?, observaciones = ?, fecha_revision = NOW()
             WHERE id = ?;
         """;

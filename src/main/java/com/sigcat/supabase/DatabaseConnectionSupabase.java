@@ -74,7 +74,7 @@ public class DatabaseConnectionSupabase {
             stmt.execute("""
                 UPDATE public.vertices v
                 SET longitud = new_c.longitud, latitud = new_c.latitud
-                FROM (VALUES 
+                FROM (VALUES
                     (1, -75.3981::float8, 9.3011::float8),
                     (2, -75.3973::float8, 9.3011::float8),
                     (3, -75.3973::float8, 9.3017::float8),
@@ -87,7 +87,7 @@ public class DatabaseConnectionSupabase {
             stmt.execute("""
                 UPDATE public.vertices v
                 SET longitud = new_c.longitud, latitud = new_c.latitud
-                FROM (VALUES 
+                FROM (VALUES
                     (1, -75.3971::float8, 9.3019::float8),
                     (2, -75.3963::float8, 9.3019::float8),
                     (3, -75.3963::float8, 9.3025::float8),

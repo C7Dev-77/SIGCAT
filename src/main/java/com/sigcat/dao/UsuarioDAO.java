@@ -5,6 +5,8 @@ import com.sigcat.security.PasswordUtil;
 import com.sigcat.utils.DatabaseConnection;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -206,6 +208,24 @@ public class UsuarioDAO {
             System.err.println("Error al actualizar perfil completo de usuario: " + e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Retorna todos los usuarios registrados en el sistema (para gestión administrativa).
+     */
+    public List<Usuario> obtenerTodos() {
+        List<Usuario> lista = new ArrayList<>();
+        String sql = "SELECT * FROM usuarios ORDER BY id_usuario ASC";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                lista.add(mapearUsuario(rs));
+            }
+        } catch (SQLException e) {
+            System.err.println("[UsuarioDAO] Error al listar usuarios: " + e.getMessage());
+        }
+        return lista;
     }
 
     private Usuario mapearUsuario(ResultSet rs) throws SQLException {

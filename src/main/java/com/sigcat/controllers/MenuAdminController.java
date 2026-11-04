@@ -1,10 +1,11 @@
 package com.sigcat.controllers;
 
+import com.sigcat.dao.AuditLogDAO;
 import com.sigcat.dao.DocumentoDAO;
 import com.sigcat.dao.PredioDAO;
 import com.sigcat.dao.PredioDAOSupabase;
-import com.sigcat.dao.VerticeDAO;
-import com.sigcat.geometry.SolapamientoValidator;
+import com.sigcat.dao.UsuarioDAO;
+import com.sigcat.models.AuditLog;
 import com.sigcat.models.DocumentoLegal;
 import com.sigcat.models.Predio;
 import com.sigcat.models.Usuario;
@@ -20,21 +21,33 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.chart.AreaChart;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Controlador para el Panel de Administración Ejecutivo Moderno de SIGCAT.
- * Integra KPIs con gradientes, gráficos de área de tendencia, gestión de auditoría,
- * sincronización con Supabase y visualización de soportes legales/recibos.
+ * Controlador para el Panel de Administración del Sistema SIGCAT.
+ * Responsabilidades exclusivas del Administrador:
+ * 1. Supervisión de KPIs, métricas globales y tendencias de catastro.
+ * 2. Trazabilidad y auditoría forense legal (audit_log).
+ * 3. Gestión y directorio de cuentas de usuarios (Propietarios, Funcionarios y Admin).
+ * 4. Monitoreo y ejecución de sincronización con Supabase Cloud.
+ * 5. Supervisión territorial de la malla cartográfica de Sincelejo.
+ *
+ * (Nota: Las tareas de dictamen, aprobación y rechazo de predios corresponden
+ * exclusivamente al Funcionario Catastral de la Alcaldía).
  */
 public class MenuAdminController implements LoginController.RecibeUsuario {
 
@@ -45,6 +58,17 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
     @FXML private Label lblSyncStatus;
     @FXML private TextField txtBuscar;
 
+    @FXML private Button btnNavDashboard;
+    @FXML private Button btnNavAuditoria;
+    @FXML private Button btnNavUsuarios;
+    @FXML private Button btnNavMapa;
+    @FXML private Button btnNavSync;
+
+    // ─── CONTENEDORES DE VISTAS DINÁMICAS ─────────────────────────
+    @FXML private ScrollPane paneDashboard;
+    @FXML private VBox paneAuditoria;
+    @FXML private VBox paneUsuarios;
+
     // ─── TARJETAS KPI (GRADIENTES) ───────────────────────────────
     @FXML private Label lblTotalPredios;
     @FXML private Label lblAreaTotal;
@@ -53,7 +77,7 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
     @FXML private Label lblTasaAprobacion;
     @FXML private Label lblResumenNorma;
 
-    // ─── TABLA DE AUDITORÍA ───────────────────────────────────────
+    // ─── TABLA DE INVENTARIO PREDIAL (SOLO INSPECCIÓN) ────────────
     @FXML private TableView<Predio> tablaSolicitudes;
     @FXML private TableColumn<Predio, String> colCodigo;
     @FXML private TableColumn<Predio, String> colNombre;
@@ -68,45 +92,63 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
     // ─── BARRAS DE PROGRESO POR SECTOR Y DONUT ────────────────────
     @FXML private ProgressBar progressCentro;
     @FXML private ProgressBar progressNorte;
-    @FXML private ProgressBar progressVenecia;
     @FXML private ProgressBar progressMajagual;
     @FXML private Label lblDonutPercent;
+
+    // ─── TABLA DE AUDITORÍA FORENSE ───────────────────────────────
+    @FXML private TableView<AuditLog> tablaAuditoria;
+    @FXML private TableColumn<AuditLog, String> colAudFecha;
+    @FXML private TableColumn<AuditLog, String> colAudUsuario;
+    @FXML private TableColumn<AuditLog, String> colAudAccion;
+    @FXML private TableColumn<AuditLog, String> colAudEntidad;
+    @FXML private TableColumn<AuditLog, String> colAudAnterior;
+    @FXML private TableColumn<AuditLog, String> colAudNuevo;
+    @FXML private TableColumn<AuditLog, String> colAudDetalles;
+
+    // ─── TABLA DE GESTIÓN DE USUARIOS ─────────────────────────────
+    @FXML private TableView<Usuario> tablaUsuarios;
+    @FXML private TableColumn<Usuario, Number> colUsrId;
+    @FXML private TableColumn<Usuario, String> colUsrDoc;
+    @FXML private TableColumn<Usuario, String> colUsrNombre;
+    @FXML private TableColumn<Usuario, String> colUsrRol;
+    @FXML private TableColumn<Usuario, String> colUsrEmail;
+    @FXML private TableColumn<Usuario, String> colUsrTel;
 
     private Usuario adminActivo;
     private final PredioDAO predioLocalDAO = new PredioDAO();
     private final PredioDAOSupabase predioSupabaseDAO = new PredioDAOSupabase();
     private final DocumentoDAO documentoDAO = new DocumentoDAO();
-    private final VerticeDAO verticeDAO = new VerticeDAO();
+    private final AuditLogDAO auditLogDAO = new AuditLogDAO();
+    private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private final SupabaseStorageService storageService = new SupabaseStorageService();
     private final SyncEngine syncEngine = new SyncEngine();
 
     private final ObservableList<Predio> listaPrediosObservable = FXCollections.observableArrayList();
+    private final ObservableList<AuditLog> listaAuditoriaObservable = FXCollections.observableArrayList();
+    private final ObservableList<Usuario> listaUsuariosObservable = FXCollections.observableArrayList();
 
     @FXML
     public void initialize() {
-        configurarTabla();
+        configurarTablaPredios();
+        configurarTablaAuditoria();
+        configurarTablaUsuarios();
         configurarGraficoTendencia();
+
         cargarDatosDashboard();
         verificarEstadoConexion();
 
-        // Suscripción a Realtime Push (Mejora #1) y Monitoreo de Red (Mejora #10)
+        // Monitoreo de Red (Mejora #10)
         com.sigcat.services.NetworkStatusService netService = com.sigcat.services.NetworkStatusService.getInstance();
         netService.iniciarMonitoreo(8);
         if (lblSyncStatus != null) {
             lblSyncStatus.textProperty().bind(netService.estadoTextoProperty());
-            netService.onlineProperty().addListener((obs, oldV, isOnline) -> {
-                if (isOnline) {
-                    lblSyncStatus.setStyle("-fx-background-color: rgba(16, 185, 129, 0.22); -fx-text-fill: #D1FAE5; -fx-border-color: #10B981; -fx-background-radius: 14; -fx-border-radius: 14; -fx-padding: 4 12 4 12; -fx-font-weight: bold; -fx-font-size: 11px;");
-                } else {
-                    lblSyncStatus.setStyle("-fx-background-color: rgba(245, 158, 11, 0.22); -fx-text-fill: #FEF3C7; -fx-border-color: #F59E0B; -fx-background-radius: 14; -fx-border-radius: 14; -fx-padding: 4 12 4 12; -fx-font-weight: bold; -fx-font-size: 11px;");
-                }
-            });
         }
 
+        // Suscripción Realtime Push (Mejora #1)
         com.sigcat.supabase.SupabaseRealtimeService rtService = com.sigcat.supabase.SupabaseRealtimeService.getInstance();
         rtService.conectar();
         rtService.registrarListenerPredios((event, record) -> Platform.runLater(this::cargarDatosDashboard));
-        rtService.registrarListenerAuditoria((event, record) -> Platform.runLater(this::cargarDatosDashboard));
+        rtService.registrarListenerAuditoria((event, record) -> Platform.runLater(this::cargarDatosAuditoriaSilencioso));
 
         // Filtro reactivo en la barra de búsqueda superior
         if (txtBuscar != null) {
@@ -119,11 +161,54 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         this.adminActivo = usuario;
         if (usuario != null) {
             if (lblAdminNombre != null) lblAdminNombre.setText(usuario.getNombre());
-            if (lblAdminRol != null) lblAdminRol.setText("ROL: " + usuario.getRol());
+            if (lblAdminRol != null) lblAdminRol.setText("ADMINISTRADOR DEL SISTEMA");
         }
     }
 
-    private void configurarTabla() {
+    // ─── CONTROL DE VISTAS (SIDEBAR) ──────────────────────────────
+
+    @FXML
+    public void mostrarDashboard(ActionEvent event) {
+        activarBotonNav(btnNavDashboard);
+        paneDashboard.setVisible(true);
+        paneAuditoria.setVisible(false);
+        paneUsuarios.setVisible(false);
+        cargarDatosDashboard();
+    }
+
+    @FXML
+    public void mostrarAuditoria(ActionEvent event) {
+        activarBotonNav(btnNavAuditoria);
+        paneDashboard.setVisible(false);
+        paneAuditoria.setVisible(true);
+        paneUsuarios.setVisible(false);
+        cargarDatosAuditoria();
+    }
+
+    @FXML
+    public void mostrarUsuarios(ActionEvent event) {
+        activarBotonNav(btnNavUsuarios);
+        paneDashboard.setVisible(false);
+        paneAuditoria.setVisible(false);
+        paneUsuarios.setVisible(true);
+        cargarDatosUsuarios();
+    }
+
+    private void activarBotonNav(Button activo) {
+        Button[] btns = {btnNavDashboard, btnNavAuditoria, btnNavUsuarios, btnNavMapa, btnNavSync};
+        for (Button b : btns) {
+            if (b != null) {
+                b.getStyleClass().remove("sidebar-nav-btn-active");
+            }
+        }
+        if (activo != null && !activo.getStyleClass().contains("sidebar-nav-btn-active")) {
+            activo.getStyleClass().add("sidebar-nav-btn-active");
+        }
+    }
+
+    // ─── CONFIGURACIÓN DE TABLAS ──────────────────────────────────
+
+    private void configurarTablaPredios() {
         if (tablaSolicitudes == null) return;
 
         if (colCodigo != null) colCodigo.setCellValueFactory(new PropertyValueFactory<>("codigoCatastral"));
@@ -168,35 +253,19 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         }
 
         if (colSoporte != null) {
-            colSoporte.setCellValueFactory(cellData -> {
-                String url = cellData.getValue().getReciboValidacionUrl();
-                return new SimpleStringProperty(url != null && !url.isEmpty() ? "📄 Con Soporte" : "Sin Archivo");
-            });
             colSoporte.setCellFactory(col -> new TableCell<>() {
-                private final Button btnVer = new Button("📄 Ver Recibo");
+                private final Button btnDoc = new Button("📄");
                 {
-                    btnVer.setStyle("-fx-background-color: #5C6BC0; -fx-text-fill: white; -fx-font-size: 10px; -fx-cursor: hand; -fx-background-radius: 4; -fx-padding: 3 8 3 8;");
-                    btnVer.setOnAction(e -> {
+                    btnDoc.setStyle("-fx-background-color: transparent; -fx-cursor: hand; -fx-font-size: 13px;");
+                    btnDoc.setOnAction(e -> {
                         Predio p = getTableView().getItems().get(getIndex());
-                        abrirSoporteDePredio(p);
+                        abrirSoportePredio(p);
                     });
                 }
-
                 @Override
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
-                    if (empty || getIndex() >= getTableView().getItems().size()) {
-                        setGraphic(null);
-                    } else {
-                        Predio p = getTableView().getItems().get(getIndex());
-                        if (p.getReciboValidacionUrl() != null && !p.getReciboValidacionUrl().isEmpty()) {
-                            setGraphic(btnVer);
-                        } else {
-                            Label lblSin = new Label("—");
-                            lblSin.setStyle("-fx-text-fill: #94A3B8;");
-                            setGraphic(lblSin);
-                        }
-                    }
+                    setGraphic(empty ? null : btnDoc);
                 }
             });
         }
@@ -204,9 +273,42 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         tablaSolicitudes.setItems(listaPrediosObservable);
     }
 
+    private void configurarTablaAuditoria() {
+        if (tablaAuditoria == null) return;
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        if (colAudFecha != null) {
+            colAudFecha.setCellValueFactory(cellData -> {
+                var f = cellData.getValue().getFecha();
+                return new SimpleStringProperty(f != null ? f.format(dtf) : "Reciente");
+            });
+        }
+        if (colAudUsuario != null) colAudUsuario.setCellValueFactory(new PropertyValueFactory<>("usuarioNombre"));
+        if (colAudAccion != null) colAudAccion.setCellValueFactory(new PropertyValueFactory<>("accion"));
+        if (colAudEntidad != null) colAudEntidad.setCellValueFactory(new PropertyValueFactory<>("entidadId"));
+        if (colAudAnterior != null) colAudAnterior.setCellValueFactory(new PropertyValueFactory<>("estadoAnterior"));
+        if (colAudNuevo != null) colAudNuevo.setCellValueFactory(new PropertyValueFactory<>("estadoNuevo"));
+        if (colAudDetalles != null) colAudDetalles.setCellValueFactory(new PropertyValueFactory<>("detalles"));
+
+        tablaAuditoria.setItems(listaAuditoriaObservable);
+    }
+
+    private void configurarTablaUsuarios() {
+        if (tablaUsuarios == null) return;
+
+        if (colUsrId != null) colUsrId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        if (colUsrDoc != null) colUsrDoc.setCellValueFactory(new PropertyValueFactory<>("documento"));
+        if (colUsrNombre != null) colUsrNombre.setCellValueFactory(new PropertyValueFactory<>("nombre"));
+        if (colUsrRol != null) colUsrRol.setCellValueFactory(new PropertyValueFactory<>("rol"));
+        if (colUsrEmail != null) colUsrEmail.setCellValueFactory(new PropertyValueFactory<>("email"));
+        if (colUsrTel != null) colUsrTel.setCellValueFactory(new PropertyValueFactory<>("telefono"));
+
+        tablaUsuarios.setItems(listaUsuariosObservable);
+    }
+
     private void configurarGraficoTendencia() {
         if (chartTendencia == null) return;
-
         chartTendencia.getData().clear();
 
         XYChart.Series<String, Number> serieRadicaciones = new XYChart.Series<>();
@@ -227,57 +329,75 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         serieAprobados.getData().add(new XYChart.Data<>("Oct", 30));
         serieAprobados.getData().add(new XYChart.Data<>("Nov", 37));
 
-        chartTendencia.getData().addAll(serieRadicaciones, serieAprobados);
+        chartTendencia.getData().add(serieRadicaciones);
+        chartTendencia.getData().add(serieAprobados);
     }
+
+    // ─── CARGA DE DATOS ASÍNCRONA ─────────────────────────────────
 
     @FXML
     public void cargarDatosDashboard() {
         new Thread(() -> {
-            // Preferir Supabase si está online; si no, SQLite local
             List<Predio> lista;
             if (DatabaseConnectionSupabase.isOnline()) {
                 lista = predioSupabaseDAO.obtenerTodos();
             } else {
                 lista = predioLocalDAO.obtenerTodos();
             }
+            List<Usuario> usuarios = usuarioDAO.obtenerTodos();
 
             Platform.runLater(() -> {
                 listaPrediosObservable.setAll(lista);
-                actualizarMetricas(lista);
+                actualizarMetricas(lista, usuarios);
             });
         }).start();
     }
 
-    private void actualizarMetricas(List<Predio> predios) {
+    @FXML
+    public void cargarDatosAuditoria() {
+        new Thread(() -> {
+            List<AuditLog> logs = auditLogDAO.listarRecientes(100);
+            Platform.runLater(() -> listaAuditoriaObservable.setAll(logs));
+        }).start();
+    }
+
+    private void cargarDatosAuditoriaSilencioso() {
+        if (paneAuditoria != null && paneAuditoria.isVisible()) {
+            cargarDatosAuditoria();
+        }
+    }
+
+    @FXML
+    public void cargarDatosUsuarios() {
+        new Thread(() -> {
+            List<Usuario> usuarios = usuarioDAO.obtenerTodos();
+            Platform.runLater(() -> listaUsuariosObservable.setAll(usuarios));
+        }).start();
+    }
+
+    private void actualizarMetricas(List<Predio> predios, List<Usuario> usuarios) {
         int total = predios.size();
         int aprobados = 0;
-        int pendientes = 0;
-        int rechazados = 0;
-        double areaSuma = 0.0;
+        double areaTotal = 0;
 
         for (Predio p : predios) {
-            String est = p.getEstado() != null ? p.getEstado().toUpperCase() : "PENDIENTE";
-            switch (est) {
-                case "APROBADO", "PUBLICO" -> aprobados++;
-                case "RECHAZADO" -> rechazados++;
-                default -> pendientes++;
+            areaTotal += p.getAreaCalculada();
+            if ("APROBADO".equalsIgnoreCase(p.getEstado()) || "PUBLICO".equalsIgnoreCase(p.getEstado())) {
+                aprobados++;
             }
-            areaSuma += p.getAreaCalculada();
         }
 
         if (lblTotalPredios != null) lblTotalPredios.setText(total + " Predios");
-        if (lblAreaTotal != null) lblAreaTotal.setText(String.format("Área total: %,.2f m²", areaSuma));
+        if (lblAreaTotal != null) lblAreaTotal.setText(String.format("Área total: %,.2f m²", areaTotal));
+        if (lblSolicitudesAuditadas != null) lblSolicitudesAuditadas.setText(usuarios.size() + " Usuarios");
+        if (lblResumenAuditadas != null) lblResumenAuditadas.setText("Directorio del Sistema");
 
-        if (lblSolicitudesAuditadas != null) lblSolicitudesAuditadas.setText((aprobados + rechazados) + " Auditadas");
-        if (lblResumenAuditadas != null) lblResumenAuditadas.setText("Pendientes: " + pendientes + " en cola");
-
-        double tasa = total > 0 ? ((double) aprobados / total) * 100.0 : 88.0;
+        double tasa = total > 0 ? ((double) aprobados / total) * 100.0 : 100.0;
         if (lblTasaAprobacion != null) lblTasaAprobacion.setText(String.format("%.0f%%", tasa));
         if (lblDonutPercent != null) lblDonutPercent.setText(String.format("%.0f%%", tasa));
 
-        // Actualizar barras de sectores calculadas dinámicamente sobre la malla de Sincelejo
         long countCentro = predios.stream().filter(p -> p.getDireccion() != null && p.getDireccion().toLowerCase().contains("centro")).count();
-        long countNorte = predios.stream().filter(p -> p.getDireccion() != null && (p.getDireccion().toLowerCase().contains("cra 28") || p.getDireccion().toLowerCase().contains("norte") || p.getDireccion().toLowerCase().contains("universidad"))).count();
+        long countNorte = predios.stream().filter(p -> p.getDireccion() != null && (p.getDireccion().toLowerCase().contains("cra 28") || p.getDireccion().toLowerCase().contains("norte"))).count();
         long countMajagual = predios.stream().filter(p -> p.getDireccion() != null && (p.getDireccion().toLowerCase().contains("majagual") || p.getDireccion().toLowerCase().contains("palmas"))).count();
 
         double pctCentro = total > 0 ? Math.min(1.0, 0.40 + (double) countCentro / total) : 0.75;
@@ -286,7 +406,6 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
 
         if (progressCentro != null) progressCentro.setProgress(pctCentro);
         if (progressNorte != null) progressNorte.setProgress(pctNorte);
-        if (progressVenecia != null) progressVenecia.setProgress(0.45);
         if (progressMajagual != null) progressMajagual.setProgress(pctMajagual);
     }
 
@@ -318,20 +437,29 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
         tablaSolicitudes.setItems(filtrados);
     }
 
+    // ─── ACCIONES DEL ADMINISTRADOR ───────────────────────────────
+
     @FXML
     public void onSincronizarSupabase(ActionEvent event) {
-        if (lblSyncStatus != null) lblSyncStatus.setText("🔄 Sincronizando...");
+        if (lblSyncStatus != null) lblSyncStatus.setText("🔄 Sincronizando con Supabase...");
         new Thread(() -> {
-            SyncEngine.SyncResult res = syncEngine.sincronizar();
-            Platform.runLater(() -> {
-                verificarEstadoConexion();
-                cargarDatosDashboard();
-                Alert alert = new Alert(res.exitoso ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING);
-                alert.setTitle("Sincronización Catastral");
-                alert.setHeaderText(res.exitoso ? "✔ Sincronización Exitosa" : "Aviso de Sincronización");
-                alert.setContentText(res.mensaje + "\n\n• Subidos a Supabase: " + res.subidos + "\n• Descargados a Local: " + res.descargados);
-                alert.showAndWait();
-            });
+            try {
+                SyncEngine.SyncResult res = syncEngine.sincronizar();
+                Platform.runLater(() -> {
+                    verificarEstadoConexion();
+                    cargarDatosDashboard();
+                    Alert alert = new Alert(res.exitoso ? Alert.AlertType.INFORMATION : Alert.AlertType.WARNING);
+                    alert.setTitle("Sincronización Catastral");
+                    alert.setHeaderText(res.exitoso ? "✔ Sincronización Exitosa" : "Aviso de Sincronización");
+                    alert.setContentText(res.mensaje + "\n\n• Subidos a Supabase: " + res.subidos + "\n• Descargados a Local: " + res.descargados);
+                    alert.showAndWait();
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    verificarEstadoConexion();
+                    mostrarAlerta("Error durante la sincronización: " + e.getMessage(), Alert.AlertType.ERROR);
+                });
+            }
         }).start();
     }
 
@@ -350,86 +478,103 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
             if (stage == null && tablaSolicitudes != null && tablaSolicitudes.getScene() != null) {
                 stage = (Stage) tablaSolicitudes.getScene().getWindow();
             }
-            ViewNavigator.cambiarVista(stage, root, "SIGCAT — Auditoría e Inspección Cartográfica (Sincelejo)");
+            ViewNavigator.cambiarVista(stage, root, "SIGCAT — Supervisión Cartográfica de Sincelejo");
         } catch (IOException e) {
             mostrarAlerta("Error al abrir visor cartográfico: " + e.getMessage(), Alert.AlertType.ERROR);
         }
     }
 
     @FXML
-    public void onAprobarSeleccionado(ActionEvent event) {
-        Predio sel = tablaSolicitudes != null ? tablaSolicitudes.getSelectionModel().getSelectedItem() : null;
-        if (sel == null) {
-            mostrarAlerta("Seleccione una solicitud de la tabla para aprobar.", Alert.AlertType.WARNING);
-            return;
-        }
+    public void onRegistrarFuncionario(ActionEvent event) {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Registrar Funcionario / Administrador");
+        dialog.setHeaderText("Crear nueva cuenta institucional para la Alcaldía de Sincelejo");
 
-        // Validación topológica antes de aprobar
-        if (sel.getVertices() == null || sel.getVertices().isEmpty()) {
-            try {
-                sel.setVertices(verticeDAO.obtenerPorPredio(sel.getId()));
-            } catch (Exception e) {
-                System.err.println("Error al cargar vértices: " + e.getMessage());
-            }
-        }
+        ButtonType btnGuardar = new ButtonType("💾 Crear Cuenta", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(btnGuardar, ButtonType.CANCEL);
 
-        List<Predio> oficiales = DatabaseConnectionSupabase.isOnline() ? predioSupabaseDAO.obtenerMallaOficial() : predioLocalDAO.obtenerPrediosParaValidacionTopologica();
-        for (Predio ofi : oficiales) {
-            if (ofi.getId() == sel.getId()) continue;
-            if (sel.getVertices() != null && ofi.getVertices() != null && SolapamientoValidator.PoligonosSeSolapan(sel.getVertices(), ofi.getVertices())) {
-                mostrarAlerta("❌ BLOQUEADO: No se puede aprobar porque invade el predio oficial " + ofi.getCodigoCatastral() + " (" + ofi.getNombre() + ").", Alert.AlertType.ERROR);
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(12);
+        grid.setPadding(new Insets(20, 150, 10, 10));
+
+        TextField txtCedula = new TextField();
+        txtCedula.setPromptText("Ej: 1002");
+        TextField txtNombre = new TextField();
+        txtNombre.setPromptText("Nombre completo del funcionario");
+        PasswordField txtPass = new PasswordField();
+        txtPass.setPromptText("Contraseña");
+        ComboBox<String> cmbRol = new ComboBox<>();
+        cmbRol.getItems().addAll("FUNCIONARIO", "ADMIN");
+        cmbRol.setValue("FUNCIONARIO");
+
+        grid.add(new Label("Cédula / Documento:"), 0, 0);
+        grid.add(txtCedula, 1, 0);
+        grid.add(new Label("Nombre Completo:"), 0, 1);
+        grid.add(txtNombre, 1, 1);
+        grid.add(new Label("Rol Asignado:"), 0, 2);
+        grid.add(cmbRol, 1, 2);
+        grid.add(new Label("Contraseña:"), 0, 3);
+        grid.add(txtPass, 1, 3);
+
+        dialog.getDialogPane().setContent(grid);
+
+        Optional<ButtonType> result = dialog.showAndWait();
+        if (result.isPresent() && result.get() == btnGuardar) {
+            String doc = txtCedula.getText().trim();
+            String nom = txtNombre.getText().trim();
+            String pass = txtPass.getText();
+            String rol = cmbRol.getValue();
+
+            if (doc.isEmpty() || nom.isEmpty() || pass.isEmpty()) {
+                mostrarAlerta("Todos los campos son obligatorios.", Alert.AlertType.WARNING);
                 return;
             }
-        }
 
-        boolean ok = DatabaseConnectionSupabase.isOnline()
-                ? predioSupabaseDAO.actualizarEstado(sel.getId(), "APROBADO", "Aprobado formalmente desde Dashboard Admin.")
-                : predioLocalDAO.actualizarEstado(sel.getId(), "APROBADO", "Aprobado en modo local.");
+            if (usuarioDAO.existeDocumento(doc)) {
+                mostrarAlerta("Ya existe un usuario registrado con el documento " + doc, Alert.AlertType.ERROR);
+                return;
+            }
 
-        if (ok) {
-            mostrarAlerta("✔ Predio " + sel.getCodigoCatastral() + " aprobado exitosamente.", Alert.AlertType.INFORMATION);
-            cargarDatosDashboard();
+            int idNuevo = usuarioDAO.registrarPropietario(doc, nom, pass);
+            if (idNuevo > 0) {
+                // Actualizar rol si es FUNCIONARIO o ADMIN
+                try (var conn = com.sigcat.utils.DatabaseConnection.getConnection();
+                     var ps = conn.prepareStatement("UPDATE usuarios SET rol = ? WHERE id_usuario = ?")) {
+                    ps.setString(1, rol);
+                    ps.setInt(2, idNuevo);
+                    ps.executeUpdate();
+                } catch (Exception ex) {
+                    System.err.println("Error asignando rol: " + ex.getMessage());
+                }
+
+                mostrarAlerta("✔ Cuenta de " + rol + " creada exitosamente.", Alert.AlertType.INFORMATION);
+                cargarDatosUsuarios();
+            } else {
+                mostrarAlerta("No se pudo registrar la cuenta.", Alert.AlertType.ERROR);
+            }
         }
     }
 
-    @FXML
-    public void onRechazarSeleccionado(ActionEvent event) {
-        Predio sel = tablaSolicitudes != null ? tablaSolicitudes.getSelectionModel().getSelectedItem() : null;
-        if (sel == null) {
-            mostrarAlerta("Seleccione una solicitud de la tabla para rechazar.", Alert.AlertType.WARNING);
+    private void abrirSoportePredio(Predio p) {
+        if (p == null) return;
+        List<DocumentoLegal> docs = documentoDAO.listarPorPredio(p.getId());
+        if (docs.isEmpty()) {
+            mostrarAlerta("El predio " + p.getCodigoCatastral() + " no tiene documentos soporte adjuntos.", Alert.AlertType.INFORMATION);
             return;
         }
 
-        TextInputDialog dialog = new TextInputDialog("Inconsistencia en linderos o falta de soportes legales.");
-        dialog.setTitle("Justificación de Rechazo");
-        dialog.setHeaderText("Rechazo de Solicitud " + sel.getCodigoCatastral());
-        dialog.setContentText("Indique el motivo técnico:");
-
-        dialog.showAndWait().ifPresent(motivo -> {
-            boolean ok = DatabaseConnectionSupabase.isOnline()
-                    ? predioSupabaseDAO.actualizarEstado(sel.getId(), "RECHAZADO", motivo)
-                    : predioLocalDAO.actualizarEstado(sel.getId(), "RECHAZADO", motivo);
-            if (ok) {
-                mostrarAlerta("Solicitud rechazada debidamente.", Alert.AlertType.INFORMATION);
-                cargarDatosDashboard();
+        StringBuilder sb = new StringBuilder("Documentos soporte del predio " + p.getCodigoCatastral() + ":\n\n");
+        for (DocumentoLegal d : docs) {
+            sb.append("• ").append(d.getTipoDocumento()).append(": ").append(d.getNombreArchivo()).append("\n");
+            if (d.getHashSha256() != null) {
+                sb.append("  Hash SHA-256: ").append(d.getHashSha256().substring(0, Math.min(24, d.getHashSha256().length()))).append("...\n");
             }
-        });
-    }
-
-    private void abrirSoporteDePredio(Predio p) {
-        if (p == null) return;
-        String url = p.getReciboValidacionUrl();
-        if (url != null && !url.isEmpty()) {
-            storageService.descargarYAbrirDocumento(url, "recibo_" + p.getCodigoCatastral() + ".pdf");
-        } else {
-            // Intentar consultar en base de datos si tiene recibo
-            DocumentoLegal doc = documentoDAO.obtenerReciboValidacion(p.getId());
-            if (doc != null && doc.getStorageUrl() != null) {
-                storageService.descargarYAbrirDocumento(doc.getStorageUrl(), doc.getNombreArchivo());
-            } else {
-                mostrarAlerta("El predio " + p.getCodigoCatastral() + " no tiene recibos o escrituras registradas.", Alert.AlertType.INFORMATION);
+            if (d.getStorageUrl() != null && !d.getStorageUrl().isEmpty()) {
+                sb.append("  URL Cloud: ").append(d.getStorageUrl()).append("\n");
             }
         }
+        mostrarAlerta(sb.toString(), Alert.AlertType.INFORMATION);
     }
 
     @FXML
@@ -438,15 +583,15 @@ public class MenuAdminController implements LoginController.RecibeUsuario {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/login.fxml"));
             Parent root = loader.load();
             Stage stage = ViewNavigator.obtenerStage(event);
-            ViewNavigator.cambiarVista(stage, root, "SIGCAT — Sistema Catastral de Sincelejo");
+            ViewNavigator.cambiarVista(stage, root, "SIGCAT — Iniciar Sesión");
         } catch (IOException e) {
-            System.err.println("Error al cerrar sesión: " + e.getMessage());
+            mostrarAlerta("Error al cerrar sesión: " + e.getMessage(), Alert.AlertType.ERROR);
         }
     }
 
     private void mostrarAlerta(String mensaje, Alert.AlertType tipo) {
         Alert alert = new Alert(tipo);
-        alert.setTitle("Panel de Administración SIGCAT");
+        alert.setTitle("SIGCAT — Administración");
         alert.setHeaderText(null);
         alert.setContentText(mensaje);
         alert.showAndWait();

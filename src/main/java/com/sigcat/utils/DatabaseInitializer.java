@@ -22,7 +22,7 @@ public class DatabaseInitializer {
      * Es seguro llamarlo múltiples veces (usa CREATE TABLE IF NOT EXISTS).
      */
     public static void initialize() throws SQLException {
-        Connection conn = DatabaseConnection.getInstance().getConnection();
+        Connection conn = DatabaseConnection.getConnection();
 
         try (Statement stmt = conn.createStatement()) {
 

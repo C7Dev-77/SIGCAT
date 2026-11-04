@@ -77,7 +77,7 @@ public class NetworkStatusService {
         if (!estabaOnline && estaOnline) {
             System.out.println("[NETWORK] Conexión a internet restablecida. Iniciando sincronización automática...");
             try {
-                syncEngine.sincronizarTodo();
+                syncEngine.sincronizar();
             } catch (Exception e) {
                 System.err.println("[NETWORK] Error en autosincronización: " + e.getMessage());
             }

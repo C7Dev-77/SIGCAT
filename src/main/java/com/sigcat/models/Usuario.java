@@ -37,7 +37,13 @@ public class Usuario {
         this.documento = documento;
         this.nombre = nombre;
         this.password = password;
-        setRol(rol);
+        if (rol != null) {
+            try {
+                this.rol = Rol.valueOf(rol.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                this.rol = Rol.PROPIETARIO;
+            }
+        }
     }
 
     public Usuario(int id, String documento, String nombre, String password, Rol rol) {

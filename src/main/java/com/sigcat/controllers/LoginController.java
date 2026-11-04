@@ -16,9 +16,10 @@ import javafx.stage.Stage;
 import java.io.IOException;
 
 /**
- * Controlador de inicio de sesión con enrutamiento automático según rol
- * (PROPIETARIO -> menu-propietario.fxml | FUNCIONARIO -> menu-funcionario.fxml)
- * y acceso al registro autónomo de propietarios.
+ * Controlador de inicio de sesión con enrutamiento automático según rol:
+ * - ADMIN -> menu-admin.fxml (Panel de Administración del Sistema)
+ * - FUNCIONARIO -> menu-funcionario.fxml (Consola de Funcionario de la Alcaldía)
+ * - PROPIETARIO -> menu-propietario.fxml (Portal del Propietario Ciudadano)
  */
 public class LoginController {
 
@@ -90,14 +91,22 @@ public class LoginController {
     private void redirigirSegunRol(Usuario usuario, ActionEvent event) {
         try {
             Stage stage = ViewNavigator.obtenerStage(event);
-            if ("ADMIN".equalsIgnoreCase(usuario.getRol()) || "FUNCIONARIO".equalsIgnoreCase(usuario.getRol())) {
+            if ("ADMIN".equalsIgnoreCase(usuario.getRol())) {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-admin.fxml"));
                 Parent root = loader.load();
                 Object controller = loader.getController();
                 if (controller instanceof RecibeUsuario recibeUsuario) {
                     recibeUsuario.setUsuario(usuario);
                 }
-                ViewNavigator.cambiarVista(stage, root, "SIGCAT — Consola de Funcionario Catastral (" + usuario.getNombre() + ")");
+                ViewNavigator.cambiarVista(stage, root, "SIGCAT — Panel de Administración del Sistema (" + usuario.getNombre() + ")");
+            } else if ("FUNCIONARIO".equalsIgnoreCase(usuario.getRol())) {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-funcionario.fxml"));
+                Parent root = loader.load();
+                Object controller = loader.getController();
+                if (controller instanceof RecibeUsuario recibeUsuario) {
+                    recibeUsuario.setUsuario(usuario);
+                }
+                ViewNavigator.cambiarVista(stage, root, "SIGCAT — Consola de Funcionario Catastral (Alcaldía de Sincelejo)");
             } else {
                 FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/menu-propietario.fxml"));
                 Parent root = loader.load();

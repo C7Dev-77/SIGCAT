@@ -24,7 +24,7 @@ public class DocumentoDAO {
         boolean guardadoRemoto = false;
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                INSERT INTO public.documentos 
+                INSERT INTO public.documentos
                     (id, predio_id, propietario_id, tipo_documento, nombre_archivo, storage_path, storage_url, estado, descripcion, hash_sha256)
                 VALUES (?::uuid, ?, ?::uuid, ?, ?, ?, ?, ?, ?, ?);
             """;
@@ -97,7 +97,7 @@ public class DocumentoDAO {
 
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo, 
+                SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo,
                        storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
                 FROM public.documentos
                 WHERE predio_id = ?
@@ -141,7 +141,7 @@ public class DocumentoDAO {
     public DocumentoLegal obtenerReciboValidacion(int predioId) {
         if (DatabaseConnectionSupabase.isOnline()) {
             String sql = """
-                SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo, 
+                SELECT id, predio_id, propietario_id, tipo_documento, nombre_archivo,
                        storage_path, storage_url, estado, descripcion, hash_sha256, subido_en, revisado_en, revisado_por
                 FROM public.documentos
                 WHERE predio_id = ? AND tipo_documento = 'RECIBO_VALIDACION'

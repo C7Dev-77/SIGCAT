@@ -44,6 +44,10 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
     @FXML private TableColumn<Predio, Double> colArea;
     @FXML private TableColumn<Predio, String> colEstado;
 
+    @FXML private Label lblFuncionarioNombre;
+    @FXML private Label lblFuncionarioRol;
+    @FXML private Label lblResumenRechazados;
+
     @FXML private TextArea txtObservacionesDictamen;
     @FXML private Label lblResumenPendientes;
     @FXML private Label lblResumenAprobados;
@@ -131,6 +135,10 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
     @Override
     public void setUsuario(Usuario usuario) {
         this.funcionario = usuario;
+        if (usuario != null) {
+            if (lblFuncionarioNombre != null) lblFuncionarioNombre.setText(usuario.getNombre());
+            if (lblFuncionarioRol != null) lblFuncionarioRol.setText("ROL: " + usuario.getRol());
+        }
     }
 
     private void configurarColumnasTabla() {
@@ -435,6 +443,10 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
             int aprobados = predioDAO.obtenerPorEstado("APROBADO").size();
             lblResumenAprobados.setText(String.valueOf(aprobados));
         }
+        if (lblResumenRechazados != null) {
+            int rechazados = predioDAO.obtenerPorEstado("RECHAZADO").size();
+            lblResumenRechazados.setText(rechazados + " Rechazados");
+        }
     }
 
     @FXML
@@ -456,6 +468,70 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
         } catch (IOException e) {
             mostrarFeedback("Error al abrir visor cartográfico: " + e.getMessage(), "#dc2626");
         }
+    }
+
+    @FXML
+    public void verDocumentosSeleccionado() {
+        Predio sel = tablaSolicitudes != null ? tablaSolicitudes.getSelectionModel().getSelectedItem() : null;
+        if (sel == null) {
+            mostrarFeedback("Seleccione un predio de la tabla para ver sus documentos soporte.", "#f59e0b");
+            return;
+        }
+        com.sigcat.dao.DocumentoDAO docDAO = new com.sigcat.dao.DocumentoDAO();
+        List<com.sigcat.models.DocumentoLegal> docs = docDAO.listarPorPredio(sel.getId());
+        if (docs.isEmpty()) {
+            mostrarFeedback("El predio " + sel.getCodigoCatastral() + " no tiene documentos soporte adjuntos.", "#f59e0b");
+            return;
+        }
+        StringBuilder sb = new StringBuilder("Expediente Documental - Predio " + sel.getCodigoCatastral() + ":\n\n");
+        for (var d : docs) {
+            sb.append("• ").append(d.getTipoDocumento()).append(": ").append(d.getNombreArchivo()).append("\n");
+            if (d.getHashSha256() != null) {
+                sb.append("  Hash SHA-256: ").append(d.getHashSha256().substring(0, Math.min(24, d.getHashSha256().length()))).append("...\n");
+            }
+            if (d.getStorageUrl() != null && !d.getStorageUrl().isEmpty()) {
+                sb.append("  URL Cloud: ").append(d.getStorageUrl()).append("\n");
+            }
+        }
+        Alert a = new Alert(Alert.AlertType.INFORMATION);
+        a.setTitle("Expediente Documental Catastral");
+        a.setHeaderText("Documentos de soporte legal de " + sel.getNombre());
+        a.setContentText(sb.toString());
+        configurarEstiloDialogo(a);
+        a.showAndWait();
+    }
+
+    @FXML
+    public void abrirCertificadoSeleccionado() {
+        Predio sel = tablaSolicitudes != null ? tablaSolicitudes.getSelectionModel().getSelectedItem() : null;
+        if (sel == null) {
+            mostrarFeedback("Seleccione un predio para consultar su certificado oficial.", "#f59e0b");
+            return;
+        }
+        if (!"APROBADO".equalsIgnoreCase(sel.getEstado())) {
+            mostrarFeedback("Solo los predios APROBADOS disponen de Certificado de Incorporación Catastral.", "#f59e0b");
+            return;
+        }
+        new Thread(() -> {
+            try {
+                com.sigcat.dao.UsuarioDAO uDAO = new com.sigcat.dao.UsuarioDAO();
+                Usuario prop = uDAO.buscarPorId(sel.getPropietarioId()).orElse(null);
+                com.sigcat.models.DocumentoLegal doc = certService.generarYGuardarCertificado(sel, funcionario, prop);
+                Platform.runLater(() -> {
+                    String info = "Archivo: " + doc.getNombreArchivo() + "\n\nHash SHA-256 (Firma Digital):\n" + doc.getHashSha256() +
+                            (doc.getStorageUrl() != null && !doc.getStorageUrl().isEmpty() ? "\n\nURL Cloud Supabase:\n" + doc.getStorageUrl() : "");
+                    mostrarFeedback("✔ Certificado oficial generado: " + doc.getNombreArchivo(), "#22c55e");
+                    Alert a = new Alert(Alert.AlertType.INFORMATION);
+                    a.setTitle("Certificado Catastral Oficial");
+                    a.setHeaderText("Certificado de Incorporación Catastral (DANE 70001)");
+                    a.setContentText(info);
+                    configurarEstiloDialogo(a);
+                    a.showAndWait();
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> mostrarFeedback("Aviso al consultar certificado: " + ex.getMessage(), "#dc2626"));
+            }
+        }).start();
     }
 
     @FXML
