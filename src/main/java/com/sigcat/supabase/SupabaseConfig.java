@@ -80,3 +80,4 @@ public class SupabaseConfig {
         return get("SUPABASE_DB_PASSWORD");
     }
 }
+

@@ -2,6 +2,7 @@ package com.sigcat.dao;
 
 import com.sigcat.models.Usuario;
 import com.sigcat.security.PasswordUtil;
+import com.sigcat.supabase.DatabaseConnectionSupabase;
 import com.sigcat.utils.DatabaseConnection;
 
 import java.sql.*;
@@ -40,13 +41,77 @@ public class UsuarioDAO {
 
                     if (PasswordUtil.checkPassword(passwordPlana, storedHash)) {
                         return mapearUsuario(rs);
+                    } else {
+                        // Usuario existe pero contraseña no coincide
+                        return null;
                     }
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error en autenticación de usuario: " + e.getMessage());
         }
+
+        // Si NO se encuentra en SQLite local (ej. usuario registrado en otro PC), validar en Supabase Cloud
+        if (com.sigcat.supabase.DatabaseConnectionSupabase.isOnline()) {
+            Usuario remoto = autenticarEnSupabase(documento.trim(), passwordPlana);
+            if (remoto != null) {
+                return remoto;
+            }
+        }
+
         return null;
+    }
+
+    private Usuario autenticarEnSupabase(String documento, String passwordPlana) {
+        String sql = "SELECT * FROM public.usuarios WHERE documento = ? AND activo = TRUE";
+        try (Connection conn = com.sigcat.supabase.DatabaseConnectionSupabase.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, documento);
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String hash = rs.getString("password_hash");
+                    if (PasswordUtil.checkPassword(passwordPlana, hash)) {
+                        Usuario u = new Usuario();
+                        u.setDocumento(rs.getString("documento"));
+                        u.setNombre(rs.getString("nombre"));
+                        u.setRol(rs.getString("rol"));
+                        u.setEmail(rs.getString("email"));
+                        u.setTelefono(rs.getString("telefono"));
+                        u.setAvatarUrl(rs.getString("avatar_url"));
+
+                        // Replicar en SQLite local para permitir acceso offline futuro
+                        int localId = registrarUsuarioLocal(u, hash);
+                        u.setId(localId);
+                        return u;
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("[UsuarioDAO] Error autenticando contra Supabase: " + e.getMessage());
+        }
+        return null;
+    }
+
+    private int registrarUsuarioLocal(Usuario u, String hash) {
+        String sql = "INSERT OR IGNORE INTO usuarios (documento, nombre, password_hash, password, rol, email, telefono, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            stmt.setString(1, u.getDocumento());
+            stmt.setString(2, u.getNombre());
+            stmt.setString(3, hash);
+            stmt.setString(4, hash);
+            stmt.setString(5, u.getRol());
+            stmt.setString(6, u.getEmail());
+            stmt.setString(7, u.getTelefono());
+            stmt.setString(8, u.getAvatarUrl());
+            stmt.executeUpdate();
+            try (ResultSet rs = stmt.getGeneratedKeys()) {
+                if (rs.next()) return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            System.err.println("[UsuarioDAO] Error registrando usuario local desde nube: " + e.getMessage());
+        }
+        return buscarPorDocumento(u.getDocumento()).map(Usuario::getId).orElse(1);
     }
 
     /**
@@ -90,6 +155,7 @@ public class UsuarioDAO {
         String sqlWithBoth = "INSERT INTO usuarios (documento, nombre, password_hash, password, rol) VALUES (?, ?, ?, ?, 'PROPIETARIO')";
         String sqlLegacy = "INSERT INTO usuarios (documento, nombre, password, rol) VALUES (?, ?, ?, 'PROPIETARIO')";
 
+        int idGenerado = -1;
         try (Connection conn = DatabaseConnection.getConnection()) {
             try (PreparedStatement stmt = conn.prepareStatement(sqlWithBoth, Statement.RETURN_GENERATED_KEYS)) {
                 stmt.setString(1, documento.trim());
@@ -100,7 +166,7 @@ public class UsuarioDAO {
                 if (filas > 0) {
                     try (ResultSet rs = stmt.getGeneratedKeys()) {
                         if (rs.next()) {
-                            return rs.getInt(1);
+                            idGenerado = rs.getInt(1);
                         }
                     }
                 }
@@ -114,7 +180,7 @@ public class UsuarioDAO {
                     if (filas > 0) {
                         try (ResultSet rs = stmt.getGeneratedKeys()) {
                             if (rs.next()) {
-                                return rs.getInt(1);
+                                idGenerado = rs.getInt(1);
                             }
                         }
                     }
@@ -123,7 +189,24 @@ public class UsuarioDAO {
         } catch (SQLException e) {
             System.err.println("Error al registrar nuevo propietario: " + e.getMessage());
         }
-        return -1;
+
+        if (idGenerado > 0 && com.sigcat.supabase.DatabaseConnectionSupabase.isOnline()) {
+            final int idFinal = idGenerado;
+            new Thread(() -> {
+                String sqlCloud = "INSERT INTO public.usuarios (documento, nombre, password_hash, rol) VALUES (?, ?, ?, 'PROPIETARIO') ON CONFLICT (documento) DO NOTHING";
+                try (Connection connCloud = com.sigcat.supabase.DatabaseConnectionSupabase.getConnection();
+                     PreparedStatement stmtCloud = connCloud.prepareStatement(sqlCloud)) {
+                    stmtCloud.setString(1, documento.trim());
+                    stmtCloud.setString(2, nombre.trim());
+                    stmtCloud.setString(3, hashSeguro);
+                    stmtCloud.executeUpdate();
+                } catch (SQLException ex) {
+                    System.err.println("[UsuarioDAO] Aviso al replicar registro a Supabase: " + ex.getMessage());
+                }
+            }).start();
+        }
+
+        return idGenerado;
     }
 
     /**
@@ -148,6 +231,23 @@ public class UsuarioDAO {
             return id;
         }
         throw new SQLException("No se pudo registrar el usuario o documento duplicado.");
+    }
+
+    public Optional<Usuario> buscarPorDocumento(String documento) {
+        if (documento == null || documento.trim().isEmpty()) return Optional.empty();
+        String sql = "SELECT * FROM usuarios WHERE documento = ?";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, documento.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapearUsuario(rs));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error al buscar usuario por documento: " + e.getMessage());
+        }
+        return Optional.empty();
     }
 
     /**

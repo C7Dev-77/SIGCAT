@@ -56,6 +56,8 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
 
     private final PredioDAO predioDAO = new PredioDAO();
     private final VerticeDAO verticeDAO = new VerticeDAO();
+    private final com.sigcat.dao.PredioDAOSupabase predioSupabaseDAO = new com.sigcat.dao.PredioDAOSupabase();
+    private final com.sigcat.sync.SyncEngine syncEngine = new com.sigcat.sync.SyncEngine();
     private final com.sigcat.services.AuditService auditService = new com.sigcat.services.AuditService();
     private final com.sigcat.services.CertificadoCatastralService certService = new com.sigcat.services.CertificadoCatastralService();
     private final ObservableList<Predio> listaObservable = FXCollections.observableArrayList();
@@ -80,14 +82,30 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
         // Suscripción Realtime Push (Mejora #1) y Monitoreo de Red (Mejora #10)
         com.sigcat.supabase.SupabaseRealtimeService.getInstance().conectar();
         com.sigcat.supabase.SupabaseRealtimeService.getInstance().registrarListenerPredios((event, record) -> {
-            Platform.runLater(this::refrescarSilencioso);
+            new Thread(() -> {
+                try {
+                    syncEngine.sincronizar();
+                    Platform.runLater(this::refrescarSilencioso);
+                } catch (Exception ignored) {}
+            }).start();
         });
         com.sigcat.services.NetworkStatusService.getInstance().iniciarMonitoreo(10);
     }
 
     private void iniciarAutoRefresco() {
-        // Sondeo cada 3.5 segundos para sincronizar en vivo con propietarios en red
-        timerAutoRefresco = new Timeline(new KeyFrame(Duration.seconds(3.5), event -> refrescarSilencioso()));
+        // Sondeo cada 3.5 segundos con sincronización en la nube Supabase (Multi-PC)
+        timerAutoRefresco = new Timeline(new KeyFrame(Duration.seconds(3.5), event -> {
+            if (com.sigcat.supabase.DatabaseConnectionSupabase.isOnline()) {
+                new Thread(() -> {
+                    try {
+                        syncEngine.sincronizar();
+                        Platform.runLater(this::refrescarSilencioso);
+                    } catch (Exception ignored) {}
+                }).start();
+            } else {
+                refrescarSilencioso();
+            }
+        }));
         timerAutoRefresco.setCycleCount(Animation.INDEFINITE);
         timerAutoRefresco.play();
     }
@@ -207,6 +225,14 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
 
     @FXML
     public void cargarSolicitudesPorFiltro() {
+        if (com.sigcat.supabase.DatabaseConnectionSupabase.isOnline()) {
+            new Thread(() -> {
+                try {
+                    syncEngine.sincronizar();
+                    Platform.runLater(this::refrescarSilencioso);
+                } catch (Exception ignored) {}
+            }).start();
+        }
         String filtro = cmbFiltroEstado != null ? cmbFiltroEstado.getValue() : "TODAS LAS SOLICITUDES";
         List<Predio> resultados = predioDAO.obtenerPorEstado(filtro);
         listaObservable.setAll(resultados);
@@ -270,6 +296,16 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
         if (exito) {
             if (txtObservacionesDictamen != null) txtObservacionesDictamen.clear();
 
+            // Replicar dictamen inmediatamente a Supabase Cloud (Multi-PC)
+            final String obsDictamen = obs;
+            new Thread(() -> {
+                try {
+                    predioSupabaseDAO.actualizarEstadoPorCodigo(seleccionado.getCodigoCatastral(), nuevoEstado, obsDictamen);
+                } catch (Exception ex) {
+                    System.err.println("[SUPABASE] Aviso actualizando dictamen en nube: " + ex.getMessage());
+                }
+            }).start();
+
             // Auditoría formal de mutación catastral (Mejora #4)
             auditService.auditarCambioEstadoPredio(seleccionado, estadoAnterior, nuevoEstado, funcionario, obs);
 
@@ -303,6 +339,12 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
                             String motivo = "Rechazado automáticamente por conflicto catastral: El terreno fue adjudicado e incorporado bajo el código " +
                                     seleccionado.getCodigoCatastral() + " (" + (seleccionado.getNombre() != null ? seleccionado.getNombre() : "Predio") + ").";
                             predioDAO.actualizarEstado(pend.getId(), "RECHAZADO", motivo);
+                            final String motFinal = motivo;
+                            new Thread(() -> {
+                                try {
+                                    predioSupabaseDAO.actualizarEstadoPorCodigo(pend.getCodigoCatastral(), "RECHAZADO", motFinal);
+                                } catch (Exception ignored) {}
+                            }).start();
                             autoRechazados++;
                         }
                     }
@@ -343,6 +385,11 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
         if (respuesta.isPresent() && respuesta.get() == ButtonType.OK) {
             boolean exito = predioDAO.eliminarPredio(seleccionado.getId());
             if (exito) {
+                new Thread(() -> {
+                    try {
+                        predioSupabaseDAO.eliminarPredioPorCodigo(seleccionado.getCodigoCatastral());
+                    } catch (Exception ignored) {}
+                }).start();
                 cargarSolicitudesPorFiltro();
                 mostrarFeedback("✔ Predio " + seleccionado.getCodigoCatastral() + " eliminado del sistema.", "#22c55e");
             } else {

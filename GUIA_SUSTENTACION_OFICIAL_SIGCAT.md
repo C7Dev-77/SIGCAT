@@ -458,3 +458,4 @@ Al momento de concluir la exposición frente al jurado, el equipo debe enfatizar
 * **Write-Ahead Logging (WAL):** Técnica de almacenamiento transaccional en bases de datos donde los cambios se registran primero en un archivo secuencial auxiliar antes de confirmarse en el archivo principal, habilitando concurrencia de lectura sin bloqueos.
 * **Hash SHA-256:** Algoritmo de resumen criptográfico de 256 bits que genera una firma digital única e irrepetible para un archivo. Si una escritura PDF es alterada en un solo byte, su hash cambia completamente.
 * **BCrypt:** Función de derivación de claves criptográficas basada en el cifrador Blowfish que incorpora una sal aleatoria (*salt*) y un factor de costo computacional para frustrar ataques de fuerza bruta.
+

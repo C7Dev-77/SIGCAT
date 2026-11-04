@@ -196,10 +196,13 @@ public class DatabaseInitializer {
                 );
             """);
 
-            // ─── Usuarios de prueba (Semilla inicial) ─────────────
+            // ─── Usuarios de prueba (Semilla inicial multi-rol y multi-PC) ─────────────
             seedUsuario(conn, 1, "1001", "Carlos Pérez (Funcionario)", "123", "FUNCIONARIO");
             seedUsuario(conn, 2, "2002", "Ana Gómez (Propietaria)", "123", "PROPIETARIO");
             seedUsuario(conn, 3, "9999", "Administrador SIGCAT", "123", "ADMIN");
+            seedUsuario(conn, 4, "1002", "Laura Martínez (Funcionario)", "123", "FUNCIONARIO");
+            seedUsuario(conn, 5, "2003", "Roberto Meza (Propietario)", "123", "PROPIETARIO");
+            seedUsuario(conn, 6, "2004", "María Contreras (Propietaria)", "123", "PROPIETARIO");
 
             // ─── Predios Públicos e Institucionales de Sincelejo (Capa Base) ───
             seedPrediosPublicosSincelejo(conn);

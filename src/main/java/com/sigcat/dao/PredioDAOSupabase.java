@@ -219,6 +219,47 @@ public class PredioDAOSupabase {
     }
 
     /**
+     * Actualiza el dictamen de un predio en Supabase usando su código catastral universal.
+     */
+    public boolean actualizarEstadoPorCodigo(String codigoCatastral, String nuevoEstado, String observaciones) {
+        if (codigoCatastral == null || codigoCatastral.trim().isEmpty()) return false;
+        String sql = """
+            UPDATE public.predios
+            SET estado = ?, observaciones = ?, fecha_revision = NOW()
+            WHERE codigo_catastral = ?;
+        """;
+
+        try (Connection conn = DatabaseConnectionSupabase.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, nuevoEstado);
+            stmt.setString(2, observaciones);
+            stmt.setString(3, codigoCatastral.trim());
+
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[PredioDAOSupabase] Error al actualizar estado por código: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Elimina un predio de Supabase por su código catastral universal.
+     */
+    public boolean eliminarPredioPorCodigo(String codigoCatastral) {
+        if (codigoCatastral == null || codigoCatastral.trim().isEmpty()) return false;
+        String sql = "DELETE FROM public.predios WHERE codigo_catastral = ?;";
+        try (Connection conn = DatabaseConnectionSupabase.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, codigoCatastral.trim());
+            return stmt.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("[PredioDAOSupabase] Error al eliminar predio por código: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Busca qué predio oficial de Supabase contiene el punto geográfico consultado (clic en mapa).
      *
      * @param latitud  Latitud WGS84

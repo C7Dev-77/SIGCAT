@@ -16,13 +16,14 @@ import java.sql.SQLException;
 public class DatabaseConnectionSupabase {
 
     private static final Dotenv dotenv = Dotenv.configure()
-            .ignoreIfMissing()   // No explota si .env no existe (modo producción)
+            .ignoreIfMissing() // No explota si .env no existe (modo producción)
             .load();
 
     private static Connection connection;
     private static boolean parchesAplicados = false;
 
-    private DatabaseConnectionSupabase() {}
+    private DatabaseConnectionSupabase() {
+    }
 
     /**
      * Retorna la conexión activa a Supabase PostgreSQL.
@@ -53,48 +54,70 @@ public class DatabaseConnectionSupabase {
         try (var stmt = conn.createStatement()) {
             stmt.execute("ALTER TABLE public.documentos ADD COLUMN IF NOT EXISTS hash_sha256 TEXT;");
             stmt.execute("""
-                CREATE TABLE IF NOT EXISTS public.audit_log (
-                    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-                    entidad         TEXT NOT NULL,
-                    entidad_id      TEXT NOT NULL,
-                    accion          TEXT NOT NULL,
-                    estado_anterior TEXT,
-                    estado_nuevo    TEXT,
-                    usuario_id      TEXT,
-                    usuario_nombre  TEXT,
-                    detalles        TEXT,
-                    fecha           TIMESTAMPTZ DEFAULT NOW()
-                );
-            """);
+                        CREATE TABLE IF NOT EXISTS public.audit_log (
+                            id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                            entidad         TEXT NOT NULL,
+                            entidad_id      TEXT NOT NULL,
+                            accion          TEXT NOT NULL,
+                            estado_anterior TEXT,
+                            estado_nuevo    TEXT,
+                            usuario_id      TEXT,
+                            usuario_nombre  TEXT,
+                            detalles        TEXT,
+                            fecha           TIMESTAMPTZ DEFAULT NOW()
+                        );
+                    """);
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_entidad ON public.audit_log(entidad, entidad_id);");
             stmt.execute("CREATE INDEX IF NOT EXISTS idx_audit_log_fecha ON public.audit_log(fecha DESC);");
 
-            // Corrección de coordenadas de predios públicos para eliminar solapamiento (Parque Santander vs Catedral)
+            // Corrección de coordenadas de predios públicos para eliminar solapamiento
+            // (Parque Santander vs Catedral)
             stmt.execute("""
-                UPDATE public.vertices v
-                SET longitud = new_c.longitud, latitud = new_c.latitud
-                FROM (VALUES
-                    (1, -75.3981::float8, 9.3011::float8),
-                    (2, -75.3973::float8, 9.3011::float8),
-                    (3, -75.3973::float8, 9.3017::float8),
-                    (4, -75.3981::float8, 9.3017::float8)
-                ) AS new_c(orden, longitud, latitud)
-                JOIN public.predios p ON p.codigo_catastral = '70001-PUB-009'
-                WHERE v.id_predio = p.id AND v.orden = new_c.orden;
-            """);
+                        UPDATE public.vertices v
+                        SET longitud = new_c.longitud, latitud = new_c.latitud
+                        FROM (VALUES
+                            (1, -75.3981::float8, 9.3011::float8),
+                            (2, -75.3973::float8, 9.3011::float8),
+                            (3, -75.3973::float8, 9.3017::float8),
+                            (4, -75.3981::float8, 9.3017::float8)
+                        ) AS new_c(orden, longitud, latitud)
+                        JOIN public.predios p ON p.codigo_catastral = '70001-PUB-009'
+                        WHERE v.id_predio = p.id AND v.orden = new_c.orden;
+                    """);
 
             stmt.execute("""
-                UPDATE public.vertices v
-                SET longitud = new_c.longitud, latitud = new_c.latitud
-                FROM (VALUES
-                    (1, -75.3971::float8, 9.3019::float8),
-                    (2, -75.3963::float8, 9.3019::float8),
-                    (3, -75.3963::float8, 9.3025::float8),
-                    (4, -75.3971::float8, 9.3025::float8)
-                ) AS new_c(orden, longitud, latitud)
-                JOIN public.predios p ON p.codigo_catastral = '70001-PUB-010'
-                WHERE v.id_predio = p.id AND v.orden = new_c.orden;
-            """);
+                        UPDATE public.vertices v
+                        SET longitud = new_c.longitud, latitud = new_c.latitud
+                        FROM (VALUES
+                            (1, -75.3971::float8, 9.3019::float8),
+                            (2, -75.3963::float8, 9.3019::float8),
+                            (3, -75.3963::float8, 9.3025::float8),
+                            (4, -75.3971::float8, 9.3025::float8)
+                        ) AS new_c(orden, longitud, latitud)
+                        JOIN public.predios p ON p.codigo_catastral = '70001-PUB-010'
+                        WHERE v.id_predio = p.id AND v.orden = new_c.orden;
+                    """);
+
+            // Semilla multi-usuario en Supabase Cloud para acceso multi-PC
+            String hashBcrypt = com.sigcat.security.PasswordUtil.hashPassword("123");
+            String sqlUsuarios = """
+                INSERT INTO public.usuarios (documento, nombre, password_hash, rol)
+                VALUES
+                    ('1001', 'Carlos Pérez (Funcionario)', ?, 'FUNCIONARIO'),
+                    ('1002', 'Laura Martínez (Funcionario)', ?, 'FUNCIONARIO'),
+                    ('2002', 'Ana Gómez (Propietaria)', ?, 'PROPIETARIO'),
+                    ('2003', 'Roberto Meza (Propietario)', ?, 'PROPIETARIO'),
+                    ('2004', 'María Contreras (Propietaria)', ?, 'PROPIETARIO'),
+                    ('9999', 'Administrador SIGCAT', ?, 'ADMIN')
+                ON CONFLICT (documento) DO UPDATE
+                SET nombre = EXCLUDED.nombre, rol = EXCLUDED.rol;
+            """;
+            try (var psUsr = conn.prepareStatement(sqlUsuarios)) {
+                for (int u = 1; u <= 6; u++) {
+                    psUsr.setString(u, hashBcrypt);
+                }
+                psUsr.executeUpdate();
+            }
         } catch (SQLException e) {
             System.err.println("[SUPABASE] Aviso al verificar esquema: " + e.getMessage());
         }
@@ -127,4 +150,3 @@ public class DatabaseConnectionSupabase {
         }
     }
 }
-

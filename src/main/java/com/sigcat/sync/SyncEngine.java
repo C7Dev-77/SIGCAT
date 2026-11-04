@@ -73,12 +73,15 @@ public class SyncEngine {
                 }
             }
 
-            // 2. PULL: Descargar malla oficial de Supabase (predios aprobados y públicos)
-            List<Predio> mallaRemota = remoteDAO.obtenerMallaOficial();
-            for (Predio rem : mallaRemota) {
+            // 2. PULL: Descargar todos los predios de Supabase (oficiales, radicaciones ciudadanas y dictámenes)
+            List<Predio> todosRemotos = remoteDAO.obtenerTodos();
+            for (Predio rem : todosRemotos) {
+                if (rem.getCodigoCatastral() == null || rem.getCodigoCatastral().trim().isEmpty()) continue;
                 if (!existePredioLocalPorCodigo(rem.getCodigoCatastral())) {
                     guardarPredioRemotoEnLocal(rem);
                     descargados++;
+                } else {
+                    actualizarPredioLocalDesdeRemoto(rem);
                 }
             }
 
@@ -143,9 +146,14 @@ public class SyncEngine {
     }
 
     private void guardarPredioRemotoEnLocal(Predio p) {
+        int propId = p.getPropietarioId() > 0 ? p.getPropietarioId() : 2;
+        if ("PUBLICO".equalsIgnoreCase(p.getTipo()) || "INSTITUCIONAL".equalsIgnoreCase(p.getTipo())) {
+            propId = 1;
+        }
+
         String sqlPredio = """
-            INSERT INTO predios (codigo_catastral, nombre, direccion, uso_suelo, area, estado, propietario_id, observaciones, sincronizado, id_remoto)
-            VALUES (?, ?, ?, ?, ?, ?, 1, ?, 1, ?);
+            INSERT INTO predios (codigo_catastral, nombre, direccion, uso_suelo, area, estado, propietario_id, observaciones, sincronizado, id_remoto, tipo, nombre_propietario)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?);
         """;
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sqlPredio, java.sql.Statement.RETURN_GENERATED_KEYS)) {
@@ -156,8 +164,11 @@ public class SyncEngine {
             stmt.setString(4, p.getUsoSuelo());
             stmt.setDouble(5, p.getAreaCalculada());
             stmt.setString(6, p.getEstado());
-            stmt.setString(7, p.getObservaciones());
-            stmt.setInt(8, p.getIdRemoto());
+            stmt.setInt(7, propId);
+            stmt.setString(8, p.getObservaciones());
+            stmt.setInt(9, p.getIdRemoto());
+            stmt.setString(10, p.getTipo() != null ? p.getTipo() : "PRIVADO");
+            stmt.setString(11, p.getNombrePropietario());
 
             int filas = stmt.executeUpdate();
             if (filas > 0 && p.getVertices() != null && !p.getVertices().isEmpty()) {
@@ -170,6 +181,24 @@ public class SyncEngine {
             }
         } catch (SQLException e) {
             System.err.println("[SyncEngine] Error al guardar predio remoto en local: " + e.getMessage());
+        }
+    }
+
+    private void actualizarPredioLocalDesdeRemoto(Predio rem) {
+        String sql = """
+            UPDATE predios
+            SET estado = ?, observaciones = ?, nombre_propietario = coalesce(?, nombre_propietario)
+            WHERE codigo_catastral = ?;
+        """;
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, rem.getEstado());
+            stmt.setString(2, rem.getObservaciones() != null ? rem.getObservaciones() : "");
+            stmt.setString(3, rem.getNombrePropietario());
+            stmt.setString(4, rem.getCodigoCatastral());
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("[SyncEngine] Error actualizando estado local desde nube: " + e.getMessage());
         }
     }
 }

@@ -62,6 +62,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
     private final PredioDAO predioDAO = new PredioDAO();
     private final DocumentoDAO documentoDAO = new DocumentoDAO();
     private final SupabaseStorageService storageService = new SupabaseStorageService();
+    private final com.sigcat.sync.SyncEngine syncEngine = new com.sigcat.sync.SyncEngine();
     private final ObservableList<Predio> misPrediosList = FXCollections.observableArrayList();
 
     private Usuario propietarioActual;
@@ -76,7 +77,18 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
     }
 
     private void iniciarAutoRefresco() {
-        timerAutoRefresco = new Timeline(new KeyFrame(Duration.seconds(4.0), event -> cargarMisPrediosSilencioso()));
+        timerAutoRefresco = new Timeline(new KeyFrame(Duration.seconds(4.0), event -> {
+            if (com.sigcat.supabase.DatabaseConnectionSupabase.isOnline()) {
+                new Thread(() -> {
+                    try {
+                        syncEngine.sincronizar();
+                        Platform.runLater(this::cargarMisPrediosSilencioso);
+                    } catch (Exception ignored) {}
+                }).start();
+            } else {
+                cargarMisPrediosSilencioso();
+            }
+        }));
         timerAutoRefresco.setCycleCount(Animation.INDEFINITE);
         timerAutoRefresco.play();
     }
@@ -88,7 +100,8 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
     }
 
     private void cargarMisPrediosSilencioso() {
-        List<Predio> predios = predioDAO.obtenerPorPropietario(propietarioId);
+        String nom = propietarioActual != null ? propietarioActual.getNombre() : null;
+        List<Predio> predios = predioDAO.obtenerPorPropietario(propietarioId, nom);
         if (predios.size() != misPrediosList.size() || !sonListasIguales(predios, misPrediosList)) {
             misPrediosList.setAll(predios);
             actualizarMetricasCards(predios);
@@ -232,7 +245,16 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
 
     @FXML
     public void cargarMisPredios() {
-        List<Predio> predios = predioDAO.obtenerPorPropietario(propietarioId);
+        if (com.sigcat.supabase.DatabaseConnectionSupabase.isOnline()) {
+            new Thread(() -> {
+                try {
+                    syncEngine.sincronizar();
+                    Platform.runLater(this::cargarMisPrediosSilencioso);
+                } catch (Exception ignored) {}
+            }).start();
+        }
+        String nom = propietarioActual != null ? propietarioActual.getNombre() : null;
+        List<Predio> predios = predioDAO.obtenerPorPropietario(propietarioId, nom);
         misPrediosList.setAll(predios);
         actualizarMetricasCards(predios);
     }

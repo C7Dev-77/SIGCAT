@@ -154,13 +154,23 @@ public class PredioDAO {
     }
 
     public List<Predio> obtenerPorPropietario(int propietarioId) {
+        return obtenerPorPropietario(propietarioId, null);
+    }
+
+    public List<Predio> obtenerPorPropietario(int propietarioId, String nombrePropietario) {
         List<Predio> lista = new ArrayList<>();
-        String sql = "SELECT * FROM predios WHERE propietario_id = ? ORDER BY id DESC";
+        boolean tieneNombre = nombrePropietario != null && !nombrePropietario.trim().isEmpty();
+        String sql = tieneNombre
+                ? "SELECT * FROM predios WHERE propietario_id = ? OR LOWER(nombre_propietario) = LOWER(?) ORDER BY id DESC"
+                : "SELECT * FROM predios WHERE propietario_id = ? ORDER BY id DESC";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, propietarioId);
+            if (tieneNombre) {
+                stmt.setString(2, nombrePropietario.trim());
+            }
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     Predio p = mapearPredio(rs);
