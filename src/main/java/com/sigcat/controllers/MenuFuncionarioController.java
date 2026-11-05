@@ -5,6 +5,7 @@ import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.dao.VerticeDAO;
 import com.sigcat.geometry.SolapamientoValidator;
 import com.sigcat.models.Predio;
+import com.sigcat.models.ResumenMensual;
 import com.sigcat.models.Usuario;
 import com.sigcat.utils.ViewNavigator;
 import javafx.animation.Animation;
@@ -20,12 +21,16 @@ import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.*;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,6 +58,35 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
     @FXML private Label lblResumenAprobados;
     @FXML private Label lblMensajeFeedback;
     @FXML private ComboBox<String> cmbFiltroEstado;
+    @FXML private HBox boxFiltroEstado;
+
+    // ─── Navegación entre vistas ───
+    @FXML private Button btnNavBandeja;
+    @FXML private Button btnNavResumen;
+    @FXML private VBox panelBandeja;
+    @FXML private VBox panelResumen;
+
+    // ─── Resumen mensual ───
+    @FXML private ComboBox<String> cmbAnioResumen;
+    @FXML private ComboBox<String> cmbDatoResumen;
+    @FXML private TableView<ResumenMensual> tablaResumen;
+    @FXML private TableColumn<ResumenMensual, String> colResMes;
+    @FXML private TableColumn<ResumenMensual, Integer> colResRegistrados;
+    @FXML private TableColumn<ResumenMensual, Integer> colResPendientes;
+    @FXML private TableColumn<ResumenMensual, Integer> colResAprobados;
+    @FXML private TableColumn<ResumenMensual, Integer> colResRechazados;
+    @FXML private BarChart<String, Number> graficoResumen;
+    @FXML private Label lblTotalesResumen;
+
+    private static final String TODOS_LOS_ANIOS = "Todos los años";
+    private static final String DATO_TODOS = "Todos los datos";
+    private static final String DATO_REGISTRADOS = "Registrados";
+    private static final String DATO_PENDIENTES = "Pendientes";
+    private static final String DATO_APROBADOS = "Aprobados";
+    private static final String DATO_RECHAZADOS = "Rechazados";
+
+    /** Evita recargar el resumen mientras se rellenan sus ComboBox. */
+    private boolean actualizandoFiltrosResumen = false;
 
     private final PredioDAO predioDAO = new PredioDAO();
     private final VerticeDAO verticeDAO = new VerticeDAO();
@@ -74,6 +108,8 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
             cmbFiltroEstado.setValue("TODAS LAS SOLICITUDES");
             cmbFiltroEstado.setOnAction(e -> cargarSolicitudesPorFiltro());
         }
+
+        configurarResumenMensual();
 
         cargarSolicitudesPorFiltro();
         actualizarContadoresDashboard();
@@ -255,6 +291,14 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
 
         if (seleccionado == null) {
             mostrarFeedback("Seleccione un predio de la tabla para emitir dictamen.", "#d97706");
+            return;
+        }
+
+        // Un dictamen es definitivo: solo se pueden aprobar o rechazar solicitudes PENDIENTES.
+        // (Con el filtro "TODAS LAS SOLICITUDES" la tabla también muestra predios ya dictaminados.)
+        if (!"PENDIENTE".equalsIgnoreCase(seleccionado.getEstado())) {
+            mostrarFeedback("La solicitud " + seleccionado.getCodigoCatastral() + " ya fue dictaminada ("
+                    + seleccionado.getEstado().toUpperCase() + "). Solo se pueden decidir solicitudes PENDIENTES.", "#d97706");
             return;
         }
 
@@ -494,6 +538,225 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
             int rechazados = predioDAO.obtenerPorEstado("RECHAZADO").size();
             lblResumenRechazados.setText(rechazados + " Rechazados");
         }
+    }
+
+    // ═══════════════════════════ RESUMEN MENSUAL ═══════════════════════════
+
+    private void configurarResumenMensual() {
+        if (tablaResumen == null) return;
+
+        colResMes.setCellValueFactory(new PropertyValueFactory<>("periodo"));
+        colResRegistrados.setCellValueFactory(new PropertyValueFactory<>("registrados"));
+        colResPendientes.setCellValueFactory(new PropertyValueFactory<>("pendientes"));
+        colResAprobados.setCellValueFactory(new PropertyValueFactory<>("aprobados"));
+        colResRechazados.setCellValueFactory(new PropertyValueFactory<>("rechazados"));
+
+        // Mismos colores de estado que la bandeja de solicitudes.
+        colorearColumna(colResPendientes, "#f59e0b");
+        colorearColumna(colResAprobados, "#22c55e");
+        colorearColumna(colResRechazados, "#ef4444");
+
+        actualizandoFiltrosResumen = true;
+        cmbDatoResumen.getItems().setAll(DATO_TODOS, DATO_REGISTRADOS, DATO_PENDIENTES, DATO_APROBADOS, DATO_RECHAZADOS);
+        cmbDatoResumen.setValue(DATO_TODOS);
+        actualizandoFiltrosResumen = false;
+    }
+
+    private void colorearColumna(TableColumn<ResumenMensual, Integer> col, String colorHex) {
+        col.setCellFactory(c -> new TableCell<ResumenMensual, Integer>() {
+            @Override
+            protected void updateItem(Integer valor, boolean empty) {
+                super.updateItem(valor, empty);
+                if (empty || valor == null) {
+                    setText(null);
+                    setStyle("");
+                } else {
+                    setText(String.valueOf(valor));
+                    setStyle(valor > 0 ? "-fx-text-fill: " + colorHex + "; -fx-font-weight: bold;" : "-fx-text-fill: #94a3b8;");
+                }
+            }
+        });
+    }
+
+    @FXML
+    public void mostrarBandeja() {
+        alternarVista(false);
+        cargarSolicitudesPorFiltro();
+    }
+
+    @FXML
+    public void mostrarResumenMensual() {
+        alternarVista(true);
+        cargarOpcionesAnioResumen();
+        cargarResumenMensual();
+    }
+
+    /** Muestra la bandeja o el resumen y marca el botón activo del menú lateral. */
+    private void alternarVista(boolean resumen) {
+        if (panelBandeja == null || panelResumen == null) return;
+        panelBandeja.setVisible(!resumen);
+        panelBandeja.setManaged(!resumen);
+        panelResumen.setVisible(resumen);
+        panelResumen.setManaged(resumen);
+        if (boxFiltroEstado != null) {
+            boxFiltroEstado.setVisible(!resumen);
+            boxFiltroEstado.setManaged(!resumen);
+        }
+        marcarActivo(btnNavBandeja, !resumen);
+        marcarActivo(btnNavResumen, resumen);
+    }
+
+    private void marcarActivo(Button boton, boolean activo) {
+        if (boton == null) return;
+        boton.getStyleClass().remove("sidebar-nav-btn-active");
+        if (activo) boton.getStyleClass().add("sidebar-nav-btn-active");
+    }
+
+    @FXML
+    public void onFiltroResumen() {
+        if (!actualizandoFiltrosResumen) {
+            cargarResumenMensual();
+        }
+    }
+
+    @FXML
+    public void actualizarResumenMensual() {
+        cargarOpcionesAnioResumen();
+        cargarResumenMensual();
+    }
+
+    /** Llena el filtro de años; por defecto selecciona el año más reciente con movimiento. */
+    private void cargarOpcionesAnioResumen() {
+        if (cmbAnioResumen == null) return;
+        actualizandoFiltrosResumen = true;
+        try {
+            String anterior = cmbAnioResumen.getValue();
+            ObservableList<String> opciones = FXCollections.observableArrayList(TODOS_LOS_ANIOS);
+            for (Integer anio : predioDAO.aniosConMovimiento()) {
+                opciones.add(String.valueOf(anio));
+            }
+            String actual = String.valueOf(java.time.Year.now().getValue());
+            if (!opciones.contains(actual)) {
+                opciones.add(1, actual);
+            }
+            cmbAnioResumen.setItems(opciones);
+            cmbAnioResumen.setValue(anterior != null && opciones.contains(anterior) ? anterior : opciones.get(1));
+        } catch (SQLException e) {
+            System.err.println("[RESUMEN] Error cargando años: " + e.getMessage());
+            cmbAnioResumen.setItems(FXCollections.observableArrayList(TODOS_LOS_ANIOS));
+            cmbAnioResumen.setValue(TODOS_LOS_ANIOS);
+        } finally {
+            actualizandoFiltrosResumen = false;
+        }
+    }
+
+    private void cargarResumenMensual() {
+        if (tablaResumen == null) return;
+        String valorAnio = cmbAnioResumen != null ? cmbAnioResumen.getValue() : null;
+        Integer anio = (valorAnio == null || TODOS_LOS_ANIOS.equals(valorAnio)) ? null : Integer.valueOf(valorAnio);
+
+        try {
+            List<ResumenMensual> filas = predioDAO.resumenMensual(anio);
+            tablaResumen.setItems(FXCollections.observableArrayList(filas));
+            aplicarFiltroDatoResumen();
+            actualizarGraficoResumen(filas);
+            mostrarTotalesResumen(filas, anio);
+        } catch (SQLException e) {
+            System.err.println("[RESUMEN] Error cargando resumen mensual: " + e.getMessage());
+            tablaResumen.setItems(FXCollections.observableArrayList());
+            if (graficoResumen != null) graficoResumen.getData().clear();
+            if (lblTotalesResumen != null) {
+                lblTotalesResumen.setText("No se pudo cargar el resumen: " + e.getMessage());
+                lblTotalesResumen.setStyle("-fx-text-fill: #dc2626;");
+            }
+        }
+    }
+
+    /** Filtro "Mostrar": deja visible solo la columna elegida (o todas). */
+    private void aplicarFiltroDatoResumen() {
+        String dato = cmbDatoResumen != null && cmbDatoResumen.getValue() != null ? cmbDatoResumen.getValue() : DATO_TODOS;
+        boolean todos = DATO_TODOS.equals(dato);
+        colResRegistrados.setVisible(todos || DATO_REGISTRADOS.equals(dato));
+        colResPendientes.setVisible(todos || DATO_PENDIENTES.equals(dato));
+        colResAprobados.setVisible(todos || DATO_APROBADOS.equals(dato));
+        colResRechazados.setVisible(todos || DATO_RECHAZADOS.equals(dato));
+    }
+
+    /** Gráfico de barras por mes con las mismas series que muestra la tabla. */
+    private void actualizarGraficoResumen(List<ResumenMensual> filas) {
+        if (graficoResumen == null) return;
+        String dato = cmbDatoResumen != null && cmbDatoResumen.getValue() != null ? cmbDatoResumen.getValue() : DATO_TODOS;
+        boolean todos = DATO_TODOS.equals(dato);
+        boolean variosAnios = filas.stream().map(ResumenMensual::getAnio).distinct().count() > 1;
+
+        XYChart.Series<String, Number> registrados = new XYChart.Series<>();
+        registrados.setName(DATO_REGISTRADOS);
+        XYChart.Series<String, Number> pendientes = new XYChart.Series<>();
+        pendientes.setName(DATO_PENDIENTES);
+        XYChart.Series<String, Number> aprobados = new XYChart.Series<>();
+        aprobados.setName(DATO_APROBADOS);
+        XYChart.Series<String, Number> rechazados = new XYChart.Series<>();
+        rechazados.setName(DATO_RECHAZADOS);
+
+        for (ResumenMensual r : filas) {
+            String mes = r.getPeriodo().substring(0, 3) + (variosAnios ? " " + (r.getAnio() % 100) : "");
+            registrados.getData().add(new XYChart.Data<>(mes, r.getRegistrados()));
+            pendientes.getData().add(new XYChart.Data<>(mes, r.getPendientes()));
+            aprobados.getData().add(new XYChart.Data<>(mes, r.getAprobados()));
+            rechazados.getData().add(new XYChart.Data<>(mes, r.getRechazados()));
+        }
+
+        graficoResumen.getData().clear();
+        if (todos || DATO_REGISTRADOS.equals(dato)) graficoResumen.getData().add(registrados);
+        if (todos || DATO_PENDIENTES.equals(dato)) graficoResumen.getData().add(pendientes);
+        if (todos || DATO_APROBADOS.equals(dato)) graficoResumen.getData().add(aprobados);
+        if (todos || DATO_RECHAZADOS.equals(dato)) graficoResumen.getData().add(rechazados);
+
+        // Colores fijos por serie (los nodos de las barras existen después de agregarlas).
+        for (XYChart.Series<String, Number> serie : graficoResumen.getData()) {
+            String color = switch (serie.getName()) {
+                case DATO_PENDIENTES -> "#f59e0b";
+                case DATO_APROBADOS -> "#22c55e";
+                case DATO_RECHAZADOS -> "#ef4444";
+                default -> "#5C6BC0";
+            };
+            for (XYChart.Data<String, Number> d : serie.getData()) {
+                if (d.getNode() != null) d.getNode().setStyle("-fx-bar-fill: " + color + ";");
+            }
+        }
+        Platform.runLater(() -> colorearLeyendaResumen());
+    }
+
+    /** La leyenda del BarChart usa colores por defecto; se igualan a los de las barras. */
+    private void colorearLeyendaResumen() {
+        if (graficoResumen == null) return;
+        for (javafx.scene.Node item : graficoResumen.lookupAll(".chart-legend-item")) {
+            if (item instanceof Label etiqueta && etiqueta.getGraphic() != null) {
+                String color = switch (etiqueta.getText()) {
+                    case DATO_PENDIENTES -> "#f59e0b";
+                    case DATO_APROBADOS -> "#22c55e";
+                    case DATO_RECHAZADOS -> "#ef4444";
+                    default -> "#5C6BC0";
+                };
+                etiqueta.getGraphic().setStyle("-fx-background-color: " + color + ";");
+            }
+        }
+    }
+
+    private void mostrarTotalesResumen(List<ResumenMensual> filas, Integer anio) {
+        if (lblTotalesResumen == null) return;
+        int reg = 0, pend = 0, apr = 0, rech = 0;
+        for (ResumenMensual r : filas) {
+            reg += r.getRegistrados();
+            pend += r.getPendientes();
+            apr += r.getAprobados();
+            rech += r.getRechazados();
+        }
+        String periodo = (anio == null) ? "Total histórico" : "Total " + anio;
+        lblTotalesResumen.setText(String.format(
+            "%s:  %d registrados  ·  %d pendientes  ·  %d aprobados  ·  %d rechazados",
+            periodo, reg, pend, apr, rech));
+        lblTotalesResumen.setStyle("");
     }
 
     @FXML

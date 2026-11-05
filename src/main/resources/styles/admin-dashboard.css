@@ -360,3 +360,21 @@
     -fx-background-color: #DC2626;
 }
 
+
+/* ─── RESUMEN MENSUAL (Panel del Funcionario) ─── */
+.filtro-label {
+    -fx-font-weight: bold;
+    -fx-text-fill: #64748b;
+    -fx-font-size: 12px;
+}
+
+.resumen-totales {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1e293b;
+}
+
+.resumen-nota {
+    -fx-font-size: 11px;
+    -fx-text-fill: #64748b;
+}

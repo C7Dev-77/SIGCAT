@@ -135,7 +135,7 @@ No se requiere Maven ni configuración de variables complejas. Solo necesitas **
 | Rol de Usuario | Documento / Cédula | Contraseña | Funcionalidades Principales |
 | :--- | :---: | :---: | :--- |
 | **Propietario Catastral** | `2002` | `123` | Radicación de predios con dibujo vectorial de vértices, carga de escrituras en PDF con hash SHA-256, consulta en vivo de estado y descarga de certificado emitido. |
-| **Funcionario Revisor** | `1001` | `123` | Bandeja técnica de expedientes radicados, visor GIS de superposición de capas, validación automática de solapamiento con predios aprobados/públicos, emisión de dictamen y generación del PDF con QR. |
+| **Funcionario Revisor** | `1001` | `123` | Bandeja técnica de expedientes radicados, visor GIS de superposición de capas, validación automática de solapamiento con predios aprobados/públicos, emisión de dictamen, generación del PDF con QR y **resumen mensual** de solicitudes registradas, pendientes, aprobadas y rechazadas (tabla + gráfico, con filtro por año y por dato). |
 | **Administrador General** | `9999` | `123` | Dashboard gerencial con gráficos `AreaChart` y `PieChart`, monitoreo del padrón predial de Sincelejo, registro de auditoría legal (`audit_log`) y gestión de usuarios. |
 
 > 🔒 **Seguridad Criptográfica:** Todas las contraseñas en base de datos están protegidas mediante el algoritmo **BCrypt** con factor de costo configurable (`BCrypt.checkpw`), protegiendo el sistema contra ataques de fuerza bruta y diccionarios.
