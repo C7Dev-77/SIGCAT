@@ -38,10 +38,10 @@
             <Region HBox.hgrow="ALWAYS"/>
             <Label styleClass="field-label" text="Sector Urbano:"/>
             <ComboBox fx:id="cmbSectorSincelejo" prefWidth="260.0" styleClass="combo-input"/>
-            <Button mnemonicParsing="false" onAction="#centrarMapaEnSincelejo" styleClass="btn-secondary" text="📍 Centrar Sincelejo"/>
-            <Button mnemonicParsing="false" onAction="#alternarCapaMapa" styleClass="btn-secondary" text="🗺️ Capa OSM / Cuadrícula"/>
-            <Button mnemonicParsing="false" onAction="#exportarMapaPNG" styleClass="btn-secondary" text="📸 Exportar Plano PNG"/>
-            <Button mnemonicParsing="false" onAction="#volverAlMenu" styleClass="btn-outline" text="⬅ Volver al Panel"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#centrarMapaEnSincelejo" styleClass="btn-secondary" text="📍 Centrar Sincelejo"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#alternarCapaMapa" styleClass="btn-secondary" text="🗺 Capa OSM / Cuadrícula"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#exportarMapaPNG" styleClass="btn-secondary" text="📸 Exportar Plano PNG"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#volverAlMenu" styleClass="btn-outline" text="⬅ Volver al Panel"/>
         </HBox>
     </top>
 
@@ -75,9 +75,9 @@
                 <!-- FICHA DINÁMICA DE CONSULTA DE PREDIO (AL HACER CLIC EN EL MAPA) -->
                 <VBox fx:id="pnlFichaConsultaPredio" managed="false" visible="false" spacing="10.0" styleClass="card-consulta-predio">
                     <HBox alignment="CENTER_LEFT" spacing="8.0">
-                        <Label fx:id="lblConsultaTitulo" text="🏛️ Ficha Catastral" styleClass="section-header" HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="lblConsultaTitulo" text="🏛 Ficha Catastral" styleClass="section-header" HBox.hgrow="ALWAYS"/>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button mnemonicParsing="false" onAction="#cerrarFichaConsulta" styleClass="btn-outline" text="✖ Cerrar"/>
+                        <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#cerrarFichaConsulta" styleClass="btn-outline" text="✖ Cerrar"/>
                     </HBox>
                     <Label fx:id="lblConsultaNombre" text="Nombre del Predio" style="-fx-text-fill: #38bdf8; -fx-font-size: 15px; -fx-font-weight: bold;" wrapText="true"/>
                     <HBox alignment="CENTER_LEFT" spacing="8.0">

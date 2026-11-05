@@ -462,7 +462,7 @@ public class DibujoController {
                 if (lblAvisoRecibo != null) lblAvisoRecibo.setText("✔ Recibo de validación verificado disponible");
             } else {
                 btnVerReciboValidacion.setStyle("-fx-background-color: #5C6BC0; -fx-text-fill: white; -fx-font-weight: bold; -fx-cursor: hand;");
-                if (lblAvisoRecibo != null) lblAvisoRecibo.setText("ℹ️ Sin recibo digitalizado (clic para consultar)");
+                if (lblAvisoRecibo != null) lblAvisoRecibo.setText("ℹ Sin recibo digitalizado (clic para consultar)");
             }
         }
 
@@ -639,7 +639,7 @@ public class DibujoController {
 
             gc.setFill(Color.web("#0f172a"));
             gc.setFont(Font.font("System", 11));
-            String etiqueta = esPublico ? "🏛️ " + (p.getNombre() != null ? p.getNombre() : p.getCodigoCatastral()) : p.getCodigoCatastral();
+            String etiqueta = esPublico ? "🏛 " + (p.getNombre() != null ? p.getNombre() : p.getCodigoCatastral()) : p.getCodigoCatastral();
             gc.fillText(etiqueta, labelX - 35, labelY);
         }
 

@@ -13,6 +13,7 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
@@ -38,7 +39,7 @@
             <VBox alignment="CENTER" spacing="8.0">
                 <StackPane>
                     <Circle radius="34.0" styleClass="avatar-circle" />
-                    <Label text="🏛️" style="-fx-font-size: 28px;" />
+                    <Label text="🏛" style="-fx-font-size: 28px;" />
                 </StackPane>
                 <Label fx:id="lblFuncionarioNombre" text="CARLOS PÉREZ" styleClass="admin-name" />
                 <Label fx:id="lblFuncionarioRol" text="FUNCIONARIO CATASTRAL"
@@ -49,18 +50,18 @@
 
             <!-- BOTONES DE NAVEGACIÓN -->
             <VBox spacing="6.0">
-                <Button fx:id="btnNavBandeja" maxWidth="1.7976931348623157E308" text="📥  BANDEJA DE SOLICITUDES"
+                <Button fx:id="btnNavBandeja" maxWidth="1.7976931348623157E308" text="📥  Bandeja de solicitudes"
                     styleClass="sidebar-nav-btn, sidebar-nav-btn-active"
                     onAction="#mostrarBandeja" />
-                <Button fx:id="btnNavResumen" maxWidth="1.7976931348623157E308" text="📊  RESUMEN MENSUAL"
+                <Button fx:id="btnNavResumen" maxWidth="1.7976931348623157E308" text="📊  Resumen mensual"
                     styleClass="sidebar-nav-btn" onAction="#mostrarResumenMensual" />
-                <Button maxWidth="1.7976931348623157E308" text="🗺️  INSPECCIONAR EN MAPA"
+                <Button maxWidth="1.7976931348623157E308" text="🗺  Inspeccionar en mapa"
                     styleClass="sidebar-nav-btn" onAction="#inspeccionarEnMapa" />
-                <Button maxWidth="1.7976931348623157E308" text="📁  EXPEDIENTE Y DOCUMENTOS"
+                <Button maxWidth="1.7976931348623157E308" text="📁  Expediente y documentos"
                     styleClass="sidebar-nav-btn" onAction="#verDocumentosSeleccionado" />
-                <Button maxWidth="1.7976931348623157E308" text="📄  CERTIFICADO CATASTRAL PDF"
+                <Button maxWidth="1.7976931348623157E308" text="📄  Certificado catastral"
                     styleClass="sidebar-nav-btn" onAction="#abrirCertificadoSeleccionado" />
-                <Button maxWidth="1.7976931348623157E308" text="🔄  ACTUALIZAR BANDEJA"
+                <Button maxWidth="1.7976931348623157E308" text="🔄  Actualizar bandeja"
                     styleClass="sidebar-nav-btn" onAction="#cargarSolicitudesPorFiltro" />
             </VBox>
 
@@ -80,14 +81,14 @@
 
             <!-- BARRA SUPERIOR DE FILTRO Y ESTADO -->
             <HBox spacing="16.0" styleClass="admin-topbar">
-                <Label
-                    text="SIGCAT — Consola de Funcionario Catastral (Alcaldía de Sincelejo, DANE 70001)"
-                    styleClass="topbar-title" />
+                <VBox spacing="2.0">
+                    <Label text="Consola del Funcionario Catastral" styleClass="topbar-title" />
+                    <Label text="Alcaldía de Sincelejo · DANE 70001" styleClass="card-hint-label" />
+                </VBox>
                 <Region HBox.hgrow="ALWAYS" />
                 <HBox fx:id="boxFiltroEstado" spacing="8.0" alignment="CENTER">
-                    <Label text="Filtrar por Estado:"
-                        style="-fx-font-weight: bold; -fx-text-fill: #94a3b8; -fx-font-size: 12px;" />
-                    <ComboBox fx:id="cmbFiltroEstado" prefWidth="220.0" styleClass="combo-input" />
+                    <Label text="Filtrar por estado:" styleClass="filtro-label" />
+                    <ComboBox fx:id="cmbFiltroEstado" prefWidth="230.0" styleClass="combo-input" />
                 </HBox>
             </HBox>
 
@@ -97,27 +98,24 @@
                     <Insets top="16.0" right="22.0" bottom="20.0" left="22.0" />
                 </padding>
 
-                <!-- ─── 1. TARJETAS KPI DE SOLICITUDES ─── -->
-                <HBox spacing="18.0">
-                    <VBox HBox.hgrow="ALWAYS" styleClass="kpi-gradient-blue" spacing="4.0">
-                        <Label text="SOLICITUDES PENDIENTES" styleClass="kpi-label" />
-                        <Label fx:id="lblResumenPendientes" text="0" styleClass="kpi-value" />
-                        <Label text="Expedientes esperando dictamen técnico"
-                            styleClass="kpi-subtext" />
+                <!-- ─── 1. TARJETAS KPI (mismos colores de estado que el portal del propietario) ─── -->
+                <HBox spacing="16.0">
+                    <VBox HBox.hgrow="ALWAYS" styleClass="kpi-card-warning" spacing="3.0">
+                        <Label text="SOLICITUDES PENDIENTES" styleClass="kpi-title" />
+                        <Label fx:id="lblResumenPendientes" text="0" styleClass="kpi-number" />
+                        <Label text="Esperando dictamen técnico" styleClass="kpi-subtext" />
                     </VBox>
 
-                    <VBox HBox.hgrow="ALWAYS" styleClass="kpi-gradient-green" spacing="4.0">
-                        <Label text="PREDIOS APROBADOS" styleClass="kpi-label" />
-                        <Label fx:id="lblResumenAprobados" text="0" styleClass="kpi-value" />
-                        <Label text="Predios incorporados a la malla oficial"
-                            styleClass="kpi-subtext" />
+                    <VBox HBox.hgrow="ALWAYS" styleClass="kpi-card-success" spacing="3.0">
+                        <Label text="PREDIOS APROBADOS" styleClass="kpi-title" />
+                        <Label fx:id="lblResumenAprobados" text="0" styleClass="kpi-number" />
+                        <Label text="Incorporados a la malla oficial" styleClass="kpi-subtext" />
                     </VBox>
 
-                    <VBox HBox.hgrow="ALWAYS" styleClass="kpi-gradient-purple" spacing="4.0">
-                        <Label text="GESTIÓN CATASTRAL" styleClass="kpi-label" />
-                        <Label fx:id="lblResumenRechazados" text="Sincelejo, Sucre"
-                            styleClass="kpi-value" />
-                        <Label text="Validación de linderos WGS84 con JTS" styleClass="kpi-subtext" />
+                    <VBox HBox.hgrow="ALWAYS" styleClass="kpi-card-danger" spacing="3.0">
+                        <Label text="SOLICITUDES RECHAZADAS" styleClass="kpi-title" />
+                        <Label fx:id="lblResumenRechazados" text="0" styleClass="kpi-number" />
+                        <Label text="Con dictamen desfavorable" styleClass="kpi-subtext" />
                     </VBox>
                 </HBox>
 
@@ -128,11 +126,11 @@
                         <!-- ─── 2. TABLA DE SOLICITUDES CATASTRALES ─── -->
                         <VBox VBox.vgrow="ALWAYS" styleClass="content-card" spacing="10.0">
                             <HBox alignment="CENTER_LEFT" spacing="10.0">
-                                <Label text="BANDEJA DE SOLICITUDES RADICADAS POR CIUDADANOS"
+                                <Label text="Bandeja de solicitudes radicadas"
                                     styleClass="card-header-label" />
                                 <Region HBox.hgrow="ALWAYS" />
-                                <Label text="Doble clic en una fila para auditar sobre el mapa satelital"
-                                    style="-fx-font-size: 11px; -fx-text-fill: #64748b;" />
+                                <Label text="Doble clic en una fila para inspeccionarla en el mapa"
+                                    styleClass="card-hint-label" />
                             </HBox>
 
                             <TableView fx:id="tablaSolicitudes" VBox.vgrow="ALWAYS" prefHeight="260.0"
@@ -155,36 +153,37 @@
                         </VBox>
 
                         <!-- ─── 3. PANEL DE DICTAMEN TÉCNICO MOTIVADO ─── -->
-                        <VBox styleClass="content-card" spacing="12.0">
-                            <HBox alignment="CENTER_LEFT" spacing="10.0">
-                                <Label text="⚖️ EMISIÓN DE DICTAMEN TÉCNICO MOTIVADO"
-                                    styleClass="card-header-label" />
-                                <Region HBox.hgrow="ALWAYS" />
-                                <Label fx:id="lblMensajeFeedback"
-                                    text="Seleccione un predio de la tabla para dictaminar."
-                                    style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #64748b;" />
-                            </HBox>
+                        <VBox styleClass="content-card" spacing="10.0">
+                            <Label text="⚖ Dictamen técnico de la solicitud seleccionada"
+                                styleClass="card-header-label" />
 
-                            <TextArea fx:id="txtObservacionesDictamen" prefRowCount="2"
-                                promptText="Ingrese las observaciones técnicas, concepto jurídico o justificación obligatoria en caso de rechazo..."
-                                styleClass="search-box" style="-fx-font-size: 12px;" />
+                            <TextArea fx:id="txtObservacionesDictamen" prefRowCount="2" wrapText="true"
+                                promptText="Observaciones técnicas o concepto jurídico (obligatorio para rechazar)..."
+                                styleClass="search-box" />
 
-                            <HBox spacing="10.0" alignment="CENTER_RIGHT">
-                                <Button text="🗺️ Inspeccionar en Mapa" styleClass="btn-action-primary"
-                                    onAction="#inspeccionarEnMapa" />
-                                <Button text="📁 Ver Documentos" styleClass="btn-action-primary"
-                                    onAction="#verDocumentosSeleccionado" />
-                                <Button text="📄 Ver Certificado PDF" styleClass="btn-action-primary"
-                                    onAction="#abrirCertificadoSeleccionado" />
-                                <Button text="✏️ Editar Datos" styleClass="btn-action-primary"
-                                    onAction="#editarPredioSeleccionado" />
-                                <Button text="🗑️ Eliminar" styleClass="btn-action-danger"
-                                    onAction="#eliminarPredioSeleccionado" />
-                                <Region HBox.hgrow="ALWAYS" />
-                                <Button text="✔ Aprobar Incorporación" styleClass="btn-action-success"
-                                    onAction="#aprobarSolicitudSeleccionada" />
-                                <Button text="✖ Rechazar Solicitud" styleClass="btn-action-danger"
+                            <Label fx:id="lblMensajeFeedback" wrapText="true" maxWidth="1.7976931348623157E308"
+                                text="Seleccione un predio de la tabla para dictaminar."
+                                styleClass="feedback-text" />
+
+                            <!-- Acciones de consulta a la izquierda; decisión a la derecha.
+                                 minWidth="-Infinity" evita que JavaFX recorte el texto ("Eli..."). -->
+                            <HBox spacing="12.0" alignment="CENTER_LEFT">
+                                <FlowPane hgap="8.0" vgap="8.0" HBox.hgrow="ALWAYS" prefWrapLength="520.0">
+                                    <Button text="🗺 Ver en mapa" styleClass="btn-action-primary" minWidth="-Infinity"
+                                        onAction="#inspeccionarEnMapa" />
+                                    <Button text="📁 Documentos" styleClass="btn-action-primary" minWidth="-Infinity"
+                                        onAction="#verDocumentosSeleccionado" />
+                                    <Button text="📄 Certificado" styleClass="btn-action-primary" minWidth="-Infinity"
+                                        onAction="#abrirCertificadoSeleccionado" />
+                                    <Button text="✏ Editar" styleClass="btn-action-primary" minWidth="-Infinity"
+                                        onAction="#editarPredioSeleccionado" />
+                                    <Button text="🗑 Eliminar" styleClass="btn-action-danger-outline" minWidth="-Infinity"
+                                        onAction="#eliminarPredioSeleccionado" />
+                                </FlowPane>
+                                <Button text="✖ Rechazar" styleClass="btn-action-danger" minWidth="-Infinity"
                                     onAction="#rechazarSolicitudSeleccionada" />
+                                <Button text="✔ Aprobar" styleClass="btn-action-success" minWidth="-Infinity"
+                                    onAction="#aprobarSolicitudSeleccionada" />
                             </HBox>
                         </VBox>
                     </VBox>
@@ -193,7 +192,7 @@
                     <VBox fx:id="panelResumen" spacing="12.0" visible="false" managed="false"
                         styleClass="content-card">
                         <HBox alignment="CENTER_LEFT" spacing="10.0">
-                            <Label text="📊 RESUMEN MENSUAL DE GESTIÓN CATASTRAL"
+                            <Label text="📊 Resumen mensual de gestión catastral"
                                 styleClass="card-header-label" />
                             <Region HBox.hgrow="ALWAYS" />
                             <Label text="Año:" styleClass="filtro-label" />
@@ -202,7 +201,7 @@
                             <Label text="Mostrar:" styleClass="filtro-label" />
                             <ComboBox fx:id="cmbDatoResumen" prefWidth="190.0" styleClass="combo-input"
                                 onAction="#onFiltroResumen" />
-                            <Button text="🔄 Actualizar" styleClass="btn-action-primary"
+                            <Button text="🔄 Actualizar" styleClass="btn-action-primary" minWidth="-Infinity"
                                 onAction="#actualizarResumenMensual" />
                         </HBox>
 

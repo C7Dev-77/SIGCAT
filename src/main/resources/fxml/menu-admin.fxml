@@ -38,7 +38,7 @@
             <VBox alignment="CENTER" spacing="8.0">
                 <StackPane>
                     <Circle fx:id="circleAvatar" radius="34.0" styleClass="avatar-circle"/>
-                    <Label text="👤" style="-fx-font-size: 30px; -fx-text-fill: #5C6BC0;"/>
+                    <Label text="👤" style="-fx-font-size: 30px; -fx-text-fill: #93c5fd;"/>
                 </StackPane>
                 <Label fx:id="lblAdminNombre" text="ADMINISTRADOR SIGCAT" styleClass="admin-name"/>
                 <Label fx:id="lblAdminRol" text="ADMINISTRADOR DEL SISTEMA" styleClass="admin-role"/>
@@ -48,11 +48,11 @@
 
             <!-- BOTONES DE NAVEGACIÓN -->
             <VBox spacing="6.0">
-                <Button fx:id="btnNavDashboard" maxWidth="1.7976931348623157E308" text="🏠  INICIO / DASHBOARD" styleClass="sidebar-nav-btn, sidebar-nav-btn-active" onAction="#mostrarDashboard"/>
-                <Button fx:id="btnNavAuditoria" maxWidth="1.7976931348623157E308" text="📋  AUDITORÍA FORENSE" styleClass="sidebar-nav-btn" onAction="#mostrarAuditoria"/>
-                <Button fx:id="btnNavUsuarios" maxWidth="1.7976931348623157E308" text="👥  GESTIÓN DE USUARIOS" styleClass="sidebar-nav-btn" onAction="#mostrarUsuarios"/>
-                <Button fx:id="btnNavMapa" maxWidth="1.7976931348623157E308" text="🗺️  MAPA DE SINCELEJO" styleClass="sidebar-nav-btn" onAction="#onVerEnMapa"/>
-                <Button fx:id="btnNavSync" maxWidth="1.7976931348623157E308" text="🔄  SINCRONIZAR NUBE" styleClass="sidebar-nav-btn" onAction="#onSincronizarSupabase"/>
+                <Button fx:id="btnNavDashboard" maxWidth="1.7976931348623157E308" text="🏠  Inicio" styleClass="sidebar-nav-btn, sidebar-nav-btn-active" onAction="#mostrarDashboard"/>
+                <Button fx:id="btnNavAuditoria" maxWidth="1.7976931348623157E308" text="📋  Auditoría" styleClass="sidebar-nav-btn" onAction="#mostrarAuditoria"/>
+                <Button fx:id="btnNavUsuarios" maxWidth="1.7976931348623157E308" text="👥  Usuarios" styleClass="sidebar-nav-btn" onAction="#mostrarUsuarios"/>
+                <Button fx:id="btnNavMapa" maxWidth="1.7976931348623157E308" text="🗺  Mapa de Sincelejo" styleClass="sidebar-nav-btn" onAction="#onVerEnMapa"/>
+                <Button fx:id="btnNavSync" maxWidth="1.7976931348623157E308" text="🔄  Sincronizar nube" styleClass="sidebar-nav-btn" onAction="#onSincronizarSupabase"/>
             </VBox>
 
             <Region VBox.vgrow="ALWAYS"/>
@@ -119,7 +119,7 @@
                                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                                     <Label text="INVENTARIO DE PREDIOS Y MALLA CATASTRAL" styleClass="card-header-label"/>
                                     <Region HBox.hgrow="ALWAYS"/>
-                                    <Button text="🔄 Refrescar" styleClass="btn-action-primary" onAction="#cargarDatosDashboard"/>
+                                    <Button minWidth="-Infinity" text="🔄 Refrescar" styleClass="btn-action-primary" onAction="#cargarDatosDashboard"/>
                                 </HBox>
 
                                 <TableView fx:id="tablaSolicitudes" VBox.vgrow="ALWAYS" prefHeight="260.0" styleClass="admin-table">
@@ -138,7 +138,7 @@
 
                                 <!-- BOTÓN DE ACCIÓN EXCLUSIVO: INSPECCIÓN EN MAPA (SIN APROBAR/RECHAZAR) -->
                                 <HBox spacing="10.0" alignment="CENTER_RIGHT">
-                                    <Button text="🗺️ Inspeccionar en Mapa de Sincelejo" styleClass="btn-action-primary" onAction="#onVerEnMapa"/>
+                                    <Button minWidth="-Infinity" text="🗺 Inspeccionar en Mapa de Sincelejo" styleClass="btn-action-primary" onAction="#onVerEnMapa"/>
                                 </HBox>
                             </VBox>
 
@@ -163,23 +163,23 @@
                                 <Label text="COBERTURA DE INCORPORACIÓN POR SECTORES" styleClass="card-header-label"/>
                                 <VBox spacing="6.0">
                                     <HBox alignment="CENTER_LEFT">
-                                        <Label text="Centro Histórico (Sincelejo):" style="-fx-font-weight: 600; -fx-text-fill: #334155;"/>
+                                        <Label text="Centro Histórico (Sincelejo):" styleClass="metric-row-label"/>
                                         <Region HBox.hgrow="ALWAYS"/>
-                                        <Label text="75%" style="-fx-text-fill: #10B981; -fx-font-weight: bold;"/>
+                                        <Label text="75%" style="-fx-text-fill: #4ade80; -fx-font-weight: bold;"/>
                                     </HBox>
                                     <ProgressBar fx:id="progressCentro" progress="0.75" maxWidth="1.7976931348623157E308" styleClass="progress-bar, bar-verde"/>
 
                                     <HBox alignment="CENTER_LEFT">
-                                        <Label text="Sector Norte (Universidad / Puerta Roja):" style="-fx-font-weight: 600; -fx-text-fill: #334155;"/>
+                                        <Label text="Sector Norte (Universidad / Puerta Roja):" styleClass="metric-row-label"/>
                                         <Region HBox.hgrow="ALWAYS"/>
-                                        <Label text="60%" style="-fx-text-fill: #F97316; -fx-font-weight: bold;"/>
+                                        <Label text="60%" style="-fx-text-fill: #fb923c; -fx-font-weight: bold;"/>
                                     </HBox>
                                     <ProgressBar fx:id="progressNorte" progress="0.60" maxWidth="1.7976931348623157E308" styleClass="progress-bar, bar-naranja"/>
 
                                     <HBox alignment="CENTER_LEFT">
-                                        <Label text="Sector Majagual / San Carlos:" style="-fx-font-weight: 600; -fx-text-fill: #334155;"/>
+                                        <Label text="Sector Majagual / San Carlos:" styleClass="metric-row-label"/>
                                         <Region HBox.hgrow="ALWAYS"/>
-                                        <Label text="80%" style="-fx-text-fill: #8B5CF6; -fx-font-weight: bold;"/>
+                                        <Label text="80%" style="-fx-text-fill: #c084fc; -fx-font-weight: bold;"/>
                                     </HBox>
                                     <ProgressBar fx:id="progressMajagual" progress="0.80" maxWidth="1.7976931348623157E308" styleClass="progress-bar, bar-morado"/>
                                 </VBox>
@@ -212,11 +212,11 @@
 
                     <HBox alignment="CENTER_LEFT" spacing="12.0">
                         <VBox spacing="3.0">
-                            <Label text="📜 Historial de Auditoría Legal y Trazabilidad (audit_log)" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
-                            <Label text="Registro forense inmutable de radicaciones, dictámenes y cambios de estado en Sincelejo." style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
+                            <Label text="📜 Historial de Auditoría Legal y Trazabilidad (audit_log)" styleClass="view-title"/>
+                            <Label text="Registro forense inmutable de radicaciones, dictámenes y cambios de estado en Sincelejo." styleClass="view-subtitle"/>
                         </VBox>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="🔄 Refrescar Auditoría" styleClass="btn-action-primary" onAction="#cargarDatosAuditoria"/>
+                        <Button minWidth="-Infinity" text="🔄 Refrescar Auditoría" styleClass="btn-action-primary" onAction="#cargarDatosAuditoria"/>
                     </HBox>
 
                     <TableView fx:id="tablaAuditoria" VBox.vgrow="ALWAYS" styleClass="admin-table">
@@ -245,12 +245,12 @@
 
                     <HBox alignment="CENTER_LEFT" spacing="12.0">
                         <VBox spacing="3.0">
-                            <Label text="👥 Gestión y Directorio de Cuentas del Sistema" style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: #1e293b;"/>
-                            <Label text="Administración de cuentas de Propietarios, Funcionarios de Alcaldía y Administradores." style="-fx-font-size: 12px; -fx-text-fill: #64748b;"/>
+                            <Label text="👥 Gestión y Directorio de Cuentas del Sistema" styleClass="view-title"/>
+                            <Label text="Administración de cuentas de Propietarios, Funcionarios de Alcaldía y Administradores." styleClass="view-subtitle"/>
                         </VBox>
                         <Region HBox.hgrow="ALWAYS"/>
-                        <Button text="➕ Registrar Funcionario" styleClass="btn-action-success" onAction="#onRegistrarFuncionario"/>
-                        <Button text="🔄 Refrescar Usuarios" styleClass="btn-action-primary" onAction="#cargarDatosUsuarios"/>
+                        <Button minWidth="-Infinity" text="➕ Registrar Funcionario" styleClass="btn-action-success" onAction="#onRegistrarFuncionario"/>
+                        <Button minWidth="-Infinity" text="🔄 Refrescar Usuarios" styleClass="btn-action-primary" onAction="#cargarDatosUsuarios"/>
                     </HBox>
 
                     <TableView fx:id="tablaUsuarios" VBox.vgrow="ALWAYS" styleClass="admin-table">

@@ -10,6 +10,7 @@ import com.sigcat.sync.SyncEngine;
 import com.sigcat.utils.DatabaseInitializer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
@@ -83,6 +84,13 @@ public class ValidacionLegalMapIntegrationTest {
     @Test
     @DisplayName("Debe verificar sincronización bidireccional con Supabase cuando esté online")
     void testSincronizacionOnline() {
+        // Esta prueba sube a la nube REAL los predios no sincronizados de la BD de
+        // pruebas ("Predio null", "Prueba resumen"...), y luego todos los PCs del
+        // equipo los descargan. Solo se ejecuta si se pide explícitamente:
+        //   mvnw.cmd test -Dsigcat.test.supabase=true
+        Assumptions.assumeTrue(Boolean.getBoolean("sigcat.test.supabase"),
+            "Prueba de sincronización con Supabase desactivada (usar -Dsigcat.test.supabase=true)");
+
         if (DatabaseConnectionSupabase.isOnline()) {
             SyncEngine engine = new SyncEngine();
             SyncEngine.SyncResult res = engine.sincronizar();

@@ -32,11 +32,11 @@
                 <Label fx:id="lblBienvenidaPropietario" styleClass="navbar-subtitle" text="Gestión de Predios y Validación Legal en Sincelejo, Sucre"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button mnemonicParsing="false" onAction="#irADibujarNuevoPredio" styleClass="btn-primary-lg" text="➕ Radicar / Dibujar Nuevo Predio"/>
-            <Button mnemonicParsing="false" onAction="#verPredioEnMapa" styleClass="btn-secondary" text="🗺️ Ver en Mapa"/>
-            <Button mnemonicParsing="false" onAction="#abrirMiPerfil" styleClass="btn-secondary" text="👤 Mi Perfil / Cuenta"/>
-            <Button mnemonicParsing="false" onAction="#cargarMisPredios" styleClass="btn-secondary" text="🔄 Actualizar"/>
-            <Button mnemonicParsing="false" onAction="#cerrarSesion" styleClass="btn-outline" text="🚪 Salir"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#irADibujarNuevoPredio" styleClass="btn-primary-lg" text="➕ Radicar / Dibujar Nuevo Predio"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#verPredioEnMapa" styleClass="btn-secondary" text="🗺 Ver en Mapa"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#abrirMiPerfil" styleClass="btn-secondary" text="👤 Mi Perfil / Cuenta"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#cargarMisPredios" styleClass="btn-secondary" text="🔄 Actualizar"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#cerrarSesion" styleClass="btn-outline" text="🚪 Salir"/>
         </HBox>
     </top>
 
@@ -71,11 +71,11 @@
             <HBox alignment="CENTER_LEFT" spacing="10.0">
                 <Label styleClass="section-header" text="Mis Predios y Documentos Legales"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button mnemonicParsing="false" onAction="#abrirDialogoSubirDocumento" styleClass="btn-indigo" text="📄 Subir Soporte Legal / Recibo"/>
-                <Button mnemonicParsing="false" onAction="#verReciboValidacion" styleClass="btn-secondary" text="👁️ Ver Recibo"/>
-                <Button mnemonicParsing="false" onAction="#verPredioEnMapa" styleClass="btn-secondary" text="🗺️ Ver en Mapa"/>
-                <Button mnemonicParsing="false" onAction="#editarPredioSeleccionado" styleClass="btn-secondary" text="✏️ Editar Datos"/>
-                <Button mnemonicParsing="false" onAction="#eliminarPredioSeleccionado" styleClass="btn-danger-outline" text="🗑️ Eliminar Solicitud"/>
+                <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#abrirDialogoSubirDocumento" styleClass="btn-indigo" text="📄 Subir Soporte Legal / Recibo"/>
+                <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#verReciboValidacion" styleClass="btn-secondary" text="👁 Ver Recibo"/>
+                <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#verPredioEnMapa" styleClass="btn-secondary" text="🗺 Ver en Mapa"/>
+                <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#editarPredioSeleccionado" styleClass="btn-secondary" text="✏ Editar Datos"/>
+                <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#eliminarPredioSeleccionado" styleClass="btn-danger-outline" text="🗑 Eliminar Solicitud"/>
             </HBox>
 
             <HBox alignment="CENTER_LEFT">

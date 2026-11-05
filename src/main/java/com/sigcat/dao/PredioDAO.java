@@ -189,7 +189,7 @@ public class PredioDAO {
 
     public List<Predio> obtenerTodos() {
         List<Predio> lista = new ArrayList<>();
-        String sql = "SELECT p.*, u.nombre AS nombre_propietario FROM predios p " +
+        String sql = "SELECT p.*, COALESCE(p.nombre_propietario, u.nombre) AS nombre_propietario_join FROM predios p " +
                      "LEFT JOIN usuarios u ON p.propietario_id = u.id_usuario " +
                      "ORDER BY p.id DESC";
 
@@ -217,7 +217,7 @@ public class PredioDAO {
         }
 
         List<Predio> lista = new ArrayList<>();
-        String sql = "SELECT p.*, u.nombre AS nombre_propietario FROM predios p " +
+        String sql = "SELECT p.*, COALESCE(p.nombre_propietario, u.nombre) AS nombre_propietario_join FROM predios p " +
                      "LEFT JOIN usuarios u ON p.propietario_id = u.id_usuario " +
                      "WHERE UPPER(p.estado) = UPPER(?) ORDER BY p.id DESC";
 

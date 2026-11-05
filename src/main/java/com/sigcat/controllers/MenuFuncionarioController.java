@@ -536,7 +536,7 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
         }
         if (lblResumenRechazados != null) {
             int rechazados = predioDAO.obtenerPorEstado("RECHAZADO").size();
-            lblResumenRechazados.setText(rechazados + " Rechazados");
+            lblResumenRechazados.setText(String.valueOf(rechazados));
         }
     }
 
@@ -860,7 +860,23 @@ public class MenuFuncionarioController implements LoginController.RecibeUsuario 
     private void mostrarFeedback(String mensaje, String colorHex) {
         if (lblMensajeFeedback != null) {
             lblMensajeFeedback.setText(mensaje);
-            lblMensajeFeedback.setStyle("-fx-text-fill: " + colorHex + "; -fx-font-weight: bold;");
+            lblMensajeFeedback.setStyle("-fx-text-fill: " + colorLegible(colorHex) + "; -fx-font-weight: bold;");
         }
+    }
+
+    /**
+     * Los mensajes se muestran sobre una tarjeta oscura: los tonos fuertes
+     * (rojo 600, ámbar 600, verde 600) se cambian por su versión clara para
+     * que tengan buen contraste.
+     */
+    private static String colorLegible(String colorHex) {
+        if (colorHex == null) return "#cbd5e1";
+        return switch (colorHex.toLowerCase()) {
+            case "#dc2626", "#ef4444" -> "#f87171";
+            case "#d97706", "#f59e0b" -> "#fbbf24";
+            case "#16a34a", "#22c55e" -> "#4ade80";
+            case "#64748b" -> "#94a3b8";
+            default -> colorHex;
+        };
     }
 }

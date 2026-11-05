@@ -37,9 +37,9 @@
                 <Label fx:id="lblSubtituloNav" styleClass="navbar-subtitle" text="Administración de Cuenta, Soportes Legales y Recibos Catastrales"/>
             </VBox>
             <Region HBox.hgrow="ALWAYS"/>
-            <Button mnemonicParsing="false" onAction="#volverAlMenuPropietario" styleClass="btn-secondary" text="⬅ Volver a Mis Predios"/>
-            <Button mnemonicParsing="false" onAction="#irAlMapa" styleClass="btn-secondary" text="🗺️ Ver en Mapa"/>
-            <Button mnemonicParsing="false" onAction="#cerrarSesion" styleClass="btn-outline" text="🚪 Salir"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#volverAlMenuPropietario" styleClass="btn-secondary" text="⬅ Volver a Mis Predios"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#irAlMapa" styleClass="btn-secondary" text="🗺 Ver en Mapa"/>
+            <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#cerrarSesion" styleClass="btn-outline" text="🚪 Salir"/>
         </HBox>
     </top>
 
@@ -68,7 +68,7 @@
                     <VBox alignment="CENTER_LEFT" spacing="6.0" HBox.hgrow="ALWAYS">
                         <Label fx:id="lblNombreDisplay" text="Propietario" style="-fx-text-fill: #f8fafc; -fx-font-weight: bold; -fx-font-size: 14px;" wrapText="true"/>
                         <Label styleClass="hero-badge" text="PROPIETARIO CATASTRAL"/>
-                        <Button mnemonicParsing="false" onAction="#cambiarAvatar" styleClass="btn-outline" text="📷 Cambiar Foto"/>
+                        <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#cambiarAvatar" styleClass="btn-outline" text="📷 Cambiar Foto"/>
                     </VBox>
                 </HBox>
 
@@ -121,8 +121,8 @@
                         <Label styleClass="navbar-subtitle" text="Sube escrituras públicas, recibos catastrales y certificados oficiales a Supabase Storage"/>
                     </VBox>
                     <Region HBox.hgrow="ALWAYS"/>
-                    <Button mnemonicParsing="false" onAction="#subirDocumentoNuevo" styleClass="btn-indigo" text="☁️ Subir Soporte Legal / Recibo"/>
-                    <Button mnemonicParsing="false" onAction="#recargarDocumentos" styleClass="btn-secondary" text="🔄 Refrescar"/>
+                    <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#subirDocumentoNuevo" styleClass="btn-indigo" text="☁ Subir Soporte Legal / Recibo"/>
+                    <Button minWidth="-Infinity" mnemonicParsing="false" onAction="#recargarDocumentos" styleClass="btn-secondary" text="🔄 Refrescar"/>
                 </HBox>
 
                 <Separator/>

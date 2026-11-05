@@ -193,7 +193,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
         if (colRecibo != null) {
             colRecibo.setCellFactory(col -> new TableCell<Predio, Void>() {
                 private final Button btnVer = new Button("📄 Ver Recibo");
-                private final Label lblSin = new Label("⚠️ Sin soporte");
+                private final Label lblSin = new Label("⚠ Sin soporte");
                 {
                     btnVer.setStyle("-fx-background-color: #5C6BC0; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 11px; -fx-padding: 3 8 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
                     lblSin.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 11px;");
@@ -332,7 +332,7 @@ public class MenuPropietarioController implements LoginController.RecibeUsuario 
         dialog.setHeaderText("Subir soporte legal para: " + seleccionado.getCodigoCatastral() + " (" + seleccionado.getNombre() + ")");
         configurarEstiloDialogo(dialog);
 
-        ButtonType btnSubir = new ButtonType("☁️ Subir a Supabase Storage", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnSubir = new ButtonType("☁ Subir a Supabase Storage", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(btnSubir, ButtonType.CANCEL);
 
         VBox form = new VBox(12);
