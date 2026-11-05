@@ -53,11 +53,8 @@
 
 /* TARJETAS DE AUTENTICACIÓN Y PANELES LATERALES */
 .auth-hero-panel {
-    -fx-background-color: linear-gradient(to bottom right, #1e3a8a, #0f172a);
-    -fx-background-radius: 14 0 0 14;
-    -fx-border-color: #334155;
-    -fx-border-width: 1 0 1 1;
-    -fx-border-radius: 14 0 0 14;
+    -fx-background-color: linear-gradient(to bottom right, #1e3a8a, #172554 55%, #0f172a);
+    -fx-background-radius: 16 0 0 16;
 }
 
 .auth-form-card {
@@ -594,5 +591,122 @@
     -fx-background-radius: 6;
     -fx-border-radius: 6;
     -fx-font-size: 12px;
+}
+
+/* ==========================================================================
+   INICIO DE SESIÓN Y REGISTRO
+   Una sola tarjeta centrada (auth-shell) con el panel de presentación a la
+   izquierda y el formulario a la derecha. No se estira al maximizar.
+   ========================================================================== */
+
+.auth-scroll, .auth-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.auth-shell {
+    -fx-background-color: #1e293b;
+    -fx-background-radius: 16;
+    -fx-border-color: #334155;
+    -fx-border-radius: 16;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.45), 30, 0.1, 0, 10);
+}
+
+.auth-form-panel {
+    -fx-background-color: transparent;
+}
+
+.brand-mark {
+    -fx-background-color: linear-gradient(to bottom right, #3b82f6, #1d4ed8);
+    -fx-background-radius: 10;
+    -fx-min-width: 42px;
+    -fx-min-height: 42px;
+    -fx-max-width: 42px;
+    -fx-max-height: 42px;
+}
+
+.brand-mark-text {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.brand-name {
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.brand-caption {
+    -fx-text-fill: #93c5fd;
+    -fx-font-size: 11.5px;
+}
+
+.hero-feature {
+    -fx-text-fill: #dbeafe;
+    -fx-font-size: 13px;
+}
+
+.hero-footnote {
+    -fx-text-fill: #7c93c3;
+    -fx-font-size: 11px;
+}
+
+.step-number {
+    -fx-background-color: rgba(59, 130, 246, 0.25);
+    -fx-text-fill: #bfdbfe;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+    -fx-alignment: center;
+    -fx-min-width: 26px;
+    -fx-min-height: 26px;
+    -fx-max-width: 26px;
+    -fx-max-height: 26px;
+    -fx-background-radius: 13;
+}
+
+.auth-title {
+    -fx-text-fill: #f8fafc;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.auth-subtitle {
+    -fx-text-fill: #94a3b8;
+    -fx-font-size: 12.5px;
+}
+
+.auth-footer {
+    -fx-text-fill: #475569;
+    -fx-font-size: 11px;
+}
+
+.btn-toggle-password {
+    -fx-background-color: transparent;
+    -fx-text-fill: #93c5fd;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 8 10 8 10;
+    -fx-background-radius: 6;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6;
+    -fx-cursor: hand;
+}
+
+.btn-toggle-password:hover {
+    -fx-background-color: #334155;
+    -fx-text-fill: #ffffff;
+}
+
+.caps-warning {
+    -fx-text-fill: #fbbf24;
+    -fx-font-size: 11.5px;
+    -fx-font-weight: bold;
+}
+
+.auth-form-panel .btn-primary-lg {
+    -fx-font-size: 14px;
+    -fx-padding: 12 18 12 18;
 }
 
