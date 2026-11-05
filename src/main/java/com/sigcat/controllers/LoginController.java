@@ -2,7 +2,10 @@ package com.sigcat.controllers;
 
 import com.sigcat.dao.UsuarioDAO;
 import com.sigcat.models.Usuario;
+import com.sigcat.utils.PasswordToggle;
 import com.sigcat.utils.ViewNavigator;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -11,6 +14,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.scene.input.KeyCode;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -28,6 +32,8 @@ public class LoginController {
     @FXML private Label lblErrorLogin;
     @FXML private Label lblMensajeExito;
     @FXML private Button btnIngresar;
+    @FXML private Button btnVerPassword;
+    @FXML private Label lblBloqMayus;
 
     private final UsuarioDAO usuarioDAO = new UsuarioDAO();
 
@@ -35,11 +41,49 @@ public class LoginController {
     public void initialize() {
         if (lblErrorLogin != null) {
             lblErrorLogin.setText("");
+            // El mensaje de error solo ocupa espacio cuando hay algo que mostrar
+            // (antes dejaba un hueco vacío entre la contraseña y el botón).
+            lblErrorLogin.managedProperty().bind(lblErrorLogin.textProperty().isNotEmpty());
+            lblErrorLogin.visibleProperty().bind(lblErrorLogin.textProperty().isNotEmpty());
         }
         if (lblMensajeExito != null) {
             lblMensajeExito.setText("");
             lblMensajeExito.setVisible(false);
             lblMensajeExito.setManaged(false);
+        }
+
+        PasswordToggle.vincular(txtPassword, btnVerPassword);
+
+        // Aviso de Bloq Mayús mientras se escribe la contraseña.
+        if (txtPassword != null) {
+            txtPassword.setOnKeyReleased(e -> actualizarAvisoBloqMayus());
+            txtPassword.focusedProperty().addListener((obs, antes, ahora) -> actualizarAvisoBloqMayus());
+        }
+
+        // Al escribir de nuevo, se borra el error anterior.
+        if (txtDocumento != null) {
+            txtDocumento.textProperty().addListener((obs, a, b) -> limpiarError());
+        }
+        if (txtPassword != null) {
+            txtPassword.textProperty().addListener((obs, a, b) -> limpiarError());
+        }
+    }
+
+    private void actualizarAvisoBloqMayus() {
+        if (lblBloqMayus == null) return;
+        boolean activo = false;
+        try {
+            activo = Platform.isKeyLocked(KeyCode.CAPS).orElse(false);
+        } catch (UnsupportedOperationException | IllegalStateException ignored) {
+            // Algunas plataformas no informan el estado de Bloq Mayús.
+        }
+        lblBloqMayus.setVisible(activo);
+        lblBloqMayus.setManaged(activo);
+    }
+
+    private void limpiarError() {
+        if (lblErrorLogin != null && !lblErrorLogin.getText().isEmpty()) {
+            lblErrorLogin.setText("");
         }
     }
 
@@ -74,13 +118,49 @@ public class LoginController {
             return;
         }
 
-        Usuario usuario = usuarioDAO.autenticar(documento, password);
-        if (usuario == null) {
-            mostrarError("Credenciales inválidas. Verifique su documento o contraseña.");
-            return;
-        }
+        // La verificación BCrypt tarda unos cientos de milisegundos: se hace en
+        // segundo plano para que la ventana no se congele y el botón muestre
+        // "Ingresando…" (y no se pueda pulsar dos veces).
+        bloquearFormulario(true);
+        Task<Usuario> tarea = new Task<>() {
+            @Override
+            protected Usuario call() {
+                return usuarioDAO.autenticar(documento, password);
+            }
+        };
+        tarea.setOnSucceeded(e -> {
+            Usuario usuario = tarea.getValue();
+            if (usuario == null) {
+                bloquearFormulario(false);
+                mostrarError("Documento o contraseña incorrectos.");
+                if (txtPassword != null) {
+                    txtPassword.clear();
+                    txtPassword.requestFocus();
+                }
+                return;
+            }
+            redirigirSegunRol(usuario, event);
+        });
+        tarea.setOnFailed(e -> {
+            bloquearFormulario(false);
+            mostrarError("No se pudo verificar el acceso. Intente de nuevo.");
+            if (tarea.getException() != null) {
+                tarea.getException().printStackTrace();
+            }
+        });
+        Thread hilo = new Thread(tarea, "sigcat-login");
+        hilo.setDaemon(true);
+        hilo.start();
+    }
 
-        redirigirSegunRol(usuario, event);
+    private void bloquearFormulario(boolean ocupado) {
+        if (btnIngresar != null) {
+            btnIngresar.setDisable(ocupado);
+            btnIngresar.setText(ocupado ? "Ingresando…" : "Ingresar");
+        }
+        if (txtDocumento != null) txtDocumento.setDisable(ocupado);
+        if (txtPassword != null) txtPassword.setDisable(ocupado);
+        if (btnVerPassword != null) btnVerPassword.setDisable(ocupado);
     }
 
     @FXML
@@ -117,6 +197,7 @@ public class LoginController {
                 ViewNavigator.cambiarVista(stage, root, "SIGCAT — Portal del Propietario (" + usuario.getNombre() + ")");
             }
         } catch (IOException e) {
+            bloquearFormulario(false);
             mostrarError("Error al abrir el panel principal: " + e.getMessage());
         }
     }
@@ -136,7 +217,6 @@ public class LoginController {
     private void mostrarError(String mensaje) {
         if (lblErrorLogin != null) {
             lblErrorLogin.setText(mensaje);
-            lblErrorLogin.setStyle("-fx-text-fill: #ef4444; -fx-font-weight: bold;");
         }
     }
 
