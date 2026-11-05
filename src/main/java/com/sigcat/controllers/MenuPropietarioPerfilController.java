@@ -285,8 +285,8 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
 
         if (colAcciones != null) {
             colAcciones.setCellFactory(col -> new TableCell<DocumentoLegal, Void>() {
-                private final Button btnAbrir = new Button("👁️ Ver");
-                private final Button btnBorrar = new Button("🗑️");
+                private final Button btnAbrir = new Button("👁 Ver");
+                private final Button btnBorrar = new Button("🗑");
                 private final HBox box = new HBox(6, btnAbrir, btnBorrar);
                 {
                     box.setAlignment(Pos.CENTER);
@@ -440,7 +440,7 @@ public class MenuPropietarioPerfilController implements LoginController.RecibeUs
         dialog.setHeaderText("Predio: " + predioActivo.getCodigoCatastral() + " (" + predioActivo.getNombre() + ")");
         configurarEstiloDialogo(dialog);
 
-        ButtonType btnSubir = new ButtonType("☁️ Subir a Supabase Storage", ButtonBar.ButtonData.OK_DONE);
+        ButtonType btnSubir = new ButtonType("☁ Subir a Supabase Storage", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(btnSubir, ButtonType.CANCEL);
 
         VBox form = new VBox(12);

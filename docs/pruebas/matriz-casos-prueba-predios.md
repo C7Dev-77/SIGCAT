@@ -32,3 +32,14 @@ Responsable: José Sánchez (QA)
 | CP-26 | Listar solo predios PENDIENTE | Hay predios en distintos estados | PredioDAO.listarPendientes() | Solo retorna los predios con estado = PENDIENTE | Unitaria |
 | CP-27 | Listar solo predios APROBADO con vértices | Hay predios en distintos estados | PredioDAO.listarAprobadosConVertices() | Solo retorna los APROBADO, cada uno con su lista de vértices cargada | Unitaria |
 | CP-28 | Actualizar estado de un predio | Existe un predio PENDIENTE | PredioDAO.actualizarEstado(id, APROBADO, idFuncionario) | El predio queda con estado APROBADO y el id_funcionario correcto | Unitaria |
+
+## Módulo: Resumen mensual del funcionario
+
+| ID | Caso de prueba | Precondición | Pasos | Resultado esperado | Tipo |
+|----|----------------|--------------|-------|---------------------|------|
+| CP-33 | Conteo mensual de registros y dictámenes | Predios radicados y dictaminados en distintos meses | PredioDAO.resumenMensual(anio) | 12 meses; "registrados" por mes de radicación, "aprobados/rechazados" por mes del dictamen, "pendientes" = radicados del mes sin dictamen | Unitaria |
+| CP-34 | Predios públicos excluidos del resumen | Capa base de Sincelejo cargada | PredioDAO.resumenMensual(null) | La suma de "registrados" coincide con el total de solicitudes (sin estado PUBLICO) | Unitaria |
+| CP-35 | Fechas UTC se cuentan una sola vez | Predio con fecha_registro "AAAA-12-01 01:00:00" (UTC) | PredioDAO.resumenMensual(anio) | Se cuenta en un único mes (en Colombia, noviembre) | Unitaria |
+| CP-36 | Filtros del resumen mensual | Hay solicitudes en al menos un año | Menú lateral → "Resumen mensual"; cambiar "Año" y "Mostrar" | Tabla y gráfico muestran los meses del año elegido y solo el dato seleccionado; los totales se actualizan | Funcional |
+| CP-37 | Dictamen sobre una solicitud ya procesada | Filtro "TODAS LAS SOLICITUDES"; seleccionar un predio APROBADO o RECHAZADO | Clic en "Aprobar" o "Rechazar" | Aviso "ya fue dictaminada"; el estado no cambia | Funcional |
+

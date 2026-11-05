@@ -147,7 +147,7 @@ public class DatabaseCleaner {
 
     public static void limpiarSupabase() {
         if (!DatabaseConnectionSupabase.isOnline()) {
-            System.err.println("[SUPABASE] ⚠️ No hay conexión a internet o Supabase no disponible.");
+            System.err.println("[SUPABASE] ⚠ No hay conexión a internet o Supabase no disponible.");
             return;
         }
 

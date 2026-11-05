@@ -7,6 +7,24 @@
     -fx-font-family: "Segoe UI", "Inter", "System", sans-serif;
     -fx-background-color: #0f172a;
     -fx-font-size: 13px;
+
+    /* Paleta base de Modena en oscuro: así TODOS los controles (tablas,
+       combos, menús, barras de desplazamiento, diálogos) calculan textos
+       claros sobre fondos oscuros, aunque no tengan una clase propia. */
+    -fx-base: #1e293b;
+    -fx-background: #0f172a;
+    -fx-control-inner-background: #0f172a;
+    -fx-control-inner-background-alt: #131d33;
+    -fx-accent: #2563eb;
+    -fx-default-button: #2563eb;
+    -fx-focus-color: #3b82f6;
+    -fx-faint-focus-color: rgba(59, 130, 246, 0.18);
+    -fx-selection-bar: #2563eb;
+    -fx-selection-bar-non-focused: #1e3a8a;
+    -fx-selection-bar-text: #ffffff;
+    -fx-box-border: #334155;
+    -fx-text-box-border: #334155;
+    -fx-prompt-text-fill: #64748b;
 }
 
 .root-pane, .auth-root, .login-root {
@@ -263,8 +281,12 @@
     -fx-background-radius: 8;
 }
 
-.modern-table .column-header-background {
-    -fx-background-color: #0f172a;
+.modern-table .column-header-background,
+.modern-table .column-header,
+.modern-table .filler {
+    -fx-background-color: #0b1222;
+    -fx-border-color: #334155;
+    -fx-border-width: 0 0 1 0;
 }
 
 .modern-table .column-header .label {
@@ -278,8 +300,20 @@
     -fx-border-width: 0 0 0.5 0;
 }
 
+.modern-table .table-row-cell:odd {
+    -fx-background-color: #1a2436;
+}
+
+.modern-table .table-row-cell:hover {
+    -fx-background-color: #24324a;
+}
+
 .modern-table .table-row-cell:selected {
     -fx-background-color: #1d4ed8;
+}
+
+.modern-table .table-row-cell:selected .table-cell {
+    -fx-text-fill: #ffffff;
 }
 
 .modern-table .table-cell {
@@ -421,5 +455,144 @@
 }
 .btn-indigo:hover {
     -fx-background-color: #3F51B5;
+}
+
+/* ==========================================================================
+   CONTROLES GENERALES EN TEMA OSCURO
+   (aplican a todas las pantallas: login, propietario, funcionario, admin)
+   ========================================================================== */
+
+/* Encabezados de cualquier tabla */
+.table-view .column-header-background,
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: #0b1222;
+}
+
+.table-view .column-header {
+    -fx-border-color: transparent #1e293b #334155 transparent;
+    -fx-border-width: 0 1 1 0;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #cbd5e1;
+    -fx-font-weight: bold;
+    -fx-font-size: 12px;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: #94a3b8;
+}
+
+/* Barras de desplazamiento discretas */
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #334155;
+    -fx-background-radius: 6;
+    -fx-background-insets: 2;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #475569;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 2;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: #64748b;
+}
+
+.scroll-pane, .scroll-pane > .viewport {
+    -fx-background-color: transparent;
+}
+
+.scroll-pane .corner {
+    -fx-background-color: transparent;
+}
+
+/* ComboBox: texto visible tanto en el campo como en la lista desplegable */
+.combo-box-base, .combo-input {
+    -fx-background-color: #0f172a;
+    -fx-border-color: #334155;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.combo-box-base:hover, .combo-input:hover {
+    -fx-border-color: #475569;
+}
+
+.combo-box .list-cell, .combo-input .list-cell {
+    -fx-text-fill: #f1f5f9;
+    -fx-background-color: transparent;
+}
+
+.combo-box .arrow, .combo-input .arrow {
+    -fx-background-color: #94a3b8;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #1e293b;
+    -fx-border-color: #334155;
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #e2e8f0;
+    -fx-padding: 7 12 7 12;
+}
+
+.combo-box-popup .list-view .list-cell:hover,
+.combo-box-popup .list-view .list-cell:filled:selected {
+    -fx-background-color: #2563eb;
+    -fx-text-fill: #ffffff;
+}
+
+/* Gráficos */
+.chart-title, .axis-label {
+    -fx-text-fill: #cbd5e1;
+}
+
+.axis {
+    -fx-tick-label-fill: #94a3b8;
+}
+
+.axis-tick-mark, .axis-minor-tick-mark {
+    -fx-stroke: #334155;
+}
+
+.chart-legend {
+    -fx-background-color: transparent;
+}
+
+.chart-legend-item {
+    -fx-text-fill: #cbd5e1;
+}
+
+.chart-plot-background {
+    -fx-background-color: transparent;
+}
+
+.chart-vertical-grid-lines, .chart-horizontal-grid-lines {
+    -fx-stroke: #334155;
+    -fx-stroke-dash-array: 2 4;
+}
+
+/* Tooltips */
+.tooltip {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #f1f5f9;
+    -fx-border-color: #334155;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-font-size: 12px;
 }
 

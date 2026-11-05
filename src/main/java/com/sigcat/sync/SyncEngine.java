@@ -187,15 +187,19 @@ public class SyncEngine {
     private void actualizarPredioLocalDesdeRemoto(Predio rem) {
         String sql = """
             UPDATE predios
-            SET estado = ?, observaciones = ?, nombre_propietario = coalesce(?, nombre_propietario)
+            SET fecha_revision = CASE WHEN UPPER(estado) <> UPPER(?) THEN CURRENT_TIMESTAMP ELSE fecha_revision END,
+                estado = ?, observaciones = ?, nombre_propietario = coalesce(?, nombre_propietario)
             WHERE codigo_catastral = ?;
         """;
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
+            // Si el estado cambió en otro PC, se registra la fecha del dictamen
+            // para que el resumen mensual lo cuente en el mes correcto.
             stmt.setString(1, rem.getEstado());
-            stmt.setString(2, rem.getObservaciones() != null ? rem.getObservaciones() : "");
-            stmt.setString(3, rem.getNombrePropietario());
-            stmt.setString(4, rem.getCodigoCatastral());
+            stmt.setString(2, rem.getEstado());
+            stmt.setString(3, rem.getObservaciones() != null ? rem.getObservaciones() : "");
+            stmt.setString(4, rem.getNombrePropietario());
+            stmt.setString(5, rem.getCodigoCatastral());
             stmt.executeUpdate();
         } catch (SQLException e) {
             System.err.println("[SyncEngine] Error actualizando estado local desde nube: " + e.getMessage());

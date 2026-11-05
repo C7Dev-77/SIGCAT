@@ -1,12 +1,15 @@
 package com.sigcat.dao;
 
 import com.sigcat.models.Predio;
+import com.sigcat.models.ResumenMensual;
 import com.sigcat.models.Vertice;
 import com.sigcat.utils.DatabaseConnection;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * DAO para gestión transaccional de Predios y linderos.
@@ -186,7 +189,7 @@ public class PredioDAO {
 
     public List<Predio> obtenerTodos() {
         List<Predio> lista = new ArrayList<>();
-        String sql = "SELECT p.*, u.nombre AS nombre_propietario FROM predios p " +
+        String sql = "SELECT p.*, COALESCE(p.nombre_propietario, u.nombre) AS nombre_propietario_join FROM predios p " +
                      "LEFT JOIN usuarios u ON p.propietario_id = u.id_usuario " +
                      "ORDER BY p.id DESC";
 
@@ -214,7 +217,7 @@ public class PredioDAO {
         }
 
         List<Predio> lista = new ArrayList<>();
-        String sql = "SELECT p.*, u.nombre AS nombre_propietario FROM predios p " +
+        String sql = "SELECT p.*, COALESCE(p.nombre_propietario, u.nombre) AS nombre_propietario_join FROM predios p " +
                      "LEFT JOIN usuarios u ON p.propietario_id = u.id_usuario " +
                      "WHERE UPPER(p.estado) = UPPER(?) ORDER BY p.id DESC";
 
@@ -284,6 +287,121 @@ public class PredioDAO {
             System.err.println("Error al actualizar recibo validacion: " + e.getMessage());
             return false;
         }
+    }
+
+    // ─── Resumen mensual (panel del funcionario) ────────────────────────────
+
+    /**
+     * Normaliza una columna de fecha a hora local de Colombia. SQLite guarda
+     * CURRENT_TIMESTAMP en UTC ("2026-11-05 03:10:00"), así que una solicitud
+     * radicada a las 10 p. m. del 31 de octubre quedaría en noviembre si no se
+     * convierte. Las fechas sin hora ("2026-10-31") se dejan tal cual.
+     */
+    private static String fechaLocal(String columna) {
+        return "CASE WHEN " + columna + " IS NULL THEN NULL "
+             + "WHEN length(" + columna + ") > 10 THEN datetime(" + columna + ", 'localtime') "
+             + "ELSE " + columna + " END";
+    }
+
+    /**
+     * Resumen por mes de la gestión catastral: solicitudes registradas,
+     * cuántas de ellas siguen pendientes, y dictámenes de aprobación y
+     * rechazo emitidos en cada mes. Excluye los predios públicos.
+     *
+     * @param anio año a consultar; si es null devuelve todos los meses con
+     *             movimiento. Con un año, devuelve sus 12 meses (en cero los
+     *             que no tienen movimiento).
+     */
+    public List<ResumenMensual> resumenMensual(Integer anio) throws SQLException {
+        String sql = """
+            WITH base AS (
+                SELECT UPPER(estado) AS estado,
+                       %s AS f_reg,
+                       %s AS f_rev
+                FROM predios
+                WHERE UPPER(estado) IN ('PENDIENTE', 'APROBADO', 'RECHAZADO')
+                  AND fecha_registro IS NOT NULL
+            ),
+            eventos AS (
+                SELECT substr(f_reg, 1, 7) AS periodo,
+                       1 AS registrados,
+                       CASE WHEN estado = 'PENDIENTE' THEN 1 ELSE 0 END AS pendientes,
+                       0 AS aprobados,
+                       0 AS rechazados
+                FROM base
+                UNION ALL
+                SELECT substr(COALESCE(f_rev, f_reg), 1, 7),
+                       0,
+                       0,
+                       CASE WHEN estado = 'APROBADO'  THEN 1 ELSE 0 END,
+                       CASE WHEN estado = 'RECHAZADO' THEN 1 ELSE 0 END
+                FROM base
+                WHERE estado IN ('APROBADO', 'RECHAZADO')
+            )
+            SELECT periodo,
+                   SUM(registrados) AS registrados,
+                   SUM(pendientes)  AS pendientes,
+                   SUM(aprobados)   AS aprobados,
+                   SUM(rechazados)  AS rechazados
+            FROM eventos
+            WHERE periodo IS NOT NULL
+              AND (? IS NULL OR substr(periodo, 1, 4) = ?)
+            GROUP BY periodo
+            ORDER BY periodo
+            """.formatted(fechaLocal("fecha_registro"), fechaLocal("fecha_revision"));
+
+        Map<String, ResumenMensual> porPeriodo = new TreeMap<>();
+        Connection conn = DatabaseConnection.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            String filtro = (anio == null) ? null : String.format("%04d", anio);
+            stmt.setString(1, filtro);
+            stmt.setString(2, filtro);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String periodo = rs.getString("periodo"); // "AAAA-MM"
+                    try {
+                        int a = Integer.parseInt(periodo.substring(0, 4));
+                        int m = Integer.parseInt(periodo.substring(5, 7));
+                        porPeriodo.put(periodo, new ResumenMensual(a, m,
+                            rs.getInt("registrados"), rs.getInt("pendientes"),
+                            rs.getInt("aprobados"), rs.getInt("rechazados")));
+                    } catch (RuntimeException formatoInvalido) {
+                        System.err.println("[RESUMEN] Fecha con formato no reconocido: " + periodo);
+                    }
+                }
+            }
+        }
+
+        if (anio != null) {
+            for (int mes = 1; mes <= 12; mes++) {
+                porPeriodo.putIfAbsent(String.format("%04d-%02d", anio, mes), ResumenMensual.vacio(anio, mes));
+            }
+        }
+        return new ArrayList<>(porPeriodo.values());
+    }
+
+    /** Años con al menos una solicitud registrada o dictaminada, del más reciente al más antiguo. */
+    public List<Integer> aniosConMovimiento() throws SQLException {
+        String sql = """
+            SELECT DISTINCT CAST(substr(f, 1, 4) AS INTEGER) AS anio FROM (
+                SELECT %s AS f FROM predios WHERE UPPER(estado) IN ('PENDIENTE', 'APROBADO', 'RECHAZADO')
+                UNION
+                SELECT %s FROM predios WHERE UPPER(estado) IN ('APROBADO', 'RECHAZADO')
+            )
+            WHERE f IS NOT NULL
+            ORDER BY anio DESC
+            """.formatted(fechaLocal("fecha_registro"), fechaLocal("fecha_revision"));
+
+        List<Integer> anios = new ArrayList<>();
+        Connection conn = DatabaseConnection.getConnection();
+        try (PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+            while (rs.next()) {
+                int a = rs.getInt("anio");
+                if (a > 0) anios.add(a);
+            }
+        }
+        return anios;
     }
 
     private Predio mapearPredio(ResultSet rs) throws SQLException {
